@@ -8,6 +8,7 @@ const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const sharedSession = require('express-socket.io-session');
 const sqlite3 = require('sqlite3').verbose();
+const mime = require('mime'); // Add mime library for file type validation
 
 // Load environment variables
 dotenv.config();
@@ -42,6 +43,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Allowed file types
+const allowedFileTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/ogg', 'application/pdf'];
+
 // ایجاد دیتابیس SQLite
 const db = new sqlite3.Database('./chat.db', (err) => {
   if (err) {
@@ -65,6 +69,7 @@ db.serialize(() => {
     nickname TEXT,
     fileName TEXT,
     fileData TEXT,
+    fileType TEXT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 });
@@ -79,8 +84,8 @@ function saveMessage(nickname, message) {
 }
 
 // ذخیره فایل‌ها در دیتابیس
-function saveFile(nickname, fileName, fileData) {
-  db.run(`INSERT INTO files (nickname, fileName, fileData) VALUES (?, ?, ?)`, [nickname, fileName, fileData], (err) => {
+function saveFile(nickname, fileName, fileData, fileType) {
+  db.run(`INSERT INTO files (nickname, fileName, fileData, fileType) VALUES (?, ?, ?, ?)`, [nickname, fileName, fileData, fileType], (err) => {
     if (err) {
       console.error('Failed to save file', err);
     }
@@ -123,7 +128,7 @@ app.get('/get-socket-server-url', (req, res) => {
 
 // Endpoint برای دریافت فایل‌ها
 app.get('/get-files', (req, res) => {
-  db.all(`SELECT nickname, fileName, fileData, timestamp FROM files ORDER BY timestamp ASC`, [], (err, rows) => {
+  db.all(`SELECT nickname, fileName, fileData, fileType, timestamp FROM files ORDER BY timestamp ASC`, [], (err, rows) => {
     if (err) {
       res.status(500).send({ success: false, error: 'Failed to retrieve files' });
     } else {
@@ -136,7 +141,7 @@ app.get('/get-files', (req, res) => {
 app.get('/get-messages', (req, res) => {
   db.all(`SELECT nickname, message, timestamp FROM messages ORDER BY timestamp ASC`, [], (err, rows) => {
     if (err) {
-      res.status(500).send({ success: false, error: 'Failed to retrieve messages' });
+      res.status 500.send({ success: false, error: 'Failed to retrieve messages' });
     } else {
       res.send({ success: true, messages: rows });
     }
@@ -163,8 +168,14 @@ io.on('connection', (socket) => {
   });
 
   socket.on('file upload', (data) => {
-    saveFile(data.nickname, data.fileName, data.file);
-    io.emit('file upload', { nickname: data.nickname, fileName: data.fileName, file: data.file });
+    const fileType = mime.getType(data.fileName);
+    if (!allowedFileTypes.includes(fileType)) {
+      socket.emit('file upload error', { message: 'File type not allowed' });
+      return;
+    }
+
+    saveFile(data.nickname, data.fileName, data.file, fileType);
+    io.emit('file upload', { nickname: data.nickname, fileName: data.fileName, file: data.file, fileType: fileType });
   });
 
   socket.on('clear messages', () => {

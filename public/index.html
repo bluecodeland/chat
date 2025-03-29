@@ -44,6 +44,12 @@
       <div id="upload-progress" class="hidden p-4 text-gray-600 dark:text-gray-400"></div>
     </div>
   </div>
+  <div id="popup" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+    <div class="bg-white p-4 rounded shadow-lg">
+      <span id="popup-content"></span>
+      <button class="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" onclick="closePopup()">بستن</button>
+    </div>
+  </div>
   <script src="/socket.io/socket.io.js"></script>
   <script>
     let typingTimeout;
@@ -67,6 +73,8 @@
         const sendButton = document.getElementById('send-button');
         const uploadButton = document.getElementById('upload-button');
         const clearButton = document.getElementById('clear-button');
+        const popup = document.getElementById('popup');
+        const popupContent = document.getElementById('popup-content');
 
         function handleTyping() {
           clearTimeout(typingTimeout);
@@ -138,11 +146,13 @@
                   const item = document.createElement('li');
                   item.classList.add('mb-2', 'chat-message');
                   item.classList.add(file.nickname === socket.nickname ? 'sent' : 'received');
-                  if (file.fileName.match(/\.(jpeg|jpg|gif|png)$/)) {
-                    item.innerHTML = `<strong>${file.nickname}:</strong> <img src="${file.fileData}" alt="${file.fileName}" style="max-width: 200px;" />`;
-                  } else if (file.fileName.match(/\.(mp4|webm|ogg)$/)) {
-                    item.innerHTML = `<strong>${file.nickname}:</strong> <video controls style="max-width: 200px;"><source src="${file.fileData}" type="video/mp4">${file.fileName}</video>`;
-                  } else {
+                  if (file.fileType.startsWith('image/')) {
+                    item.innerHTML = `<strong>${file.nickname}:</strong> <img src="${file.fileData}" alt="${file.fileName}" style="max-width: 200px;" onclick="openPopup('<img src=\\'${file.fileData}\\' alt=\\'${file.fileName}\\' style=\\'max-width: 100%;\\'><br><a href=\\'${file.fileData}\\' download=\\'${file.fileName}\\'>دانلود</a>')">`;
+                  } else if (file.fileType.startsWith('video/')) {
+                    item.innerHTML = `<strong>${file.nickname}:</strong> <video controls style="max-width: 200px;"><source src="${file.fileData}" type="${file.fileType}">${file.fileName}</video><br><a href="${file.fileData}" download="${file.fileName}">دانلود</a>`;
+                  } else if (file.fileType.startsWith('audio/')) {
+                    item.innerHTML = `<strong>${file.nickname}:</strong> <audio controls style="max-width: 200px;"><source src="${file.fileData}" type="${file.fileType}">${file.fileName}</audio><br><a href="${file.fileData}" download="${file.fileName}">دانلود</a>`;
+                  } else if (file.fileType === 'application/pdf') {
                     item.innerHTML = `<strong>${file.nickname}:</strong> <a href="${file.fileData}" download="${file.fileName}">${file.fileName}</a>`;
                   }
                   messages.appendChild(item);
@@ -175,15 +185,21 @@
           const item = document.createElement('li');
           item.classList.add('mb-2', 'chat-message');
           item.classList.add(data.nickname === socket.nickname ? 'sent' : 'received');
-          if (data.fileName.match(/\.(jpeg|jpg|gif|png)$/)) {
-            item.innerHTML = `<strong>${data.nickname}:</strong> <img src="${data.file}" alt="${data.fileName}" style="max-width: 200px;" />`;
-          } else if (data.fileName.match(/\.(mp4|webm|ogg)$/)) {
-            item.innerHTML = `<strong>${data.nickname}:</strong> <video controls style="max-width: 200px;"><source src="${data.file}" type="video/mp4">${data.fileName}</video>`;
-          } else {
+          if (data.fileType.startsWith('image/')) {
+            item.innerHTML = `<strong>${data.nickname}:</strong> <img src="${data.file}" alt="${data.fileName}" style="max-width: 200px;" onclick="openPopup('<img src=\\'${data.file}\\' alt=\\'${data.fileName}\\' style=\\'max-width: 100%;\\'><br><a href=\\'${data.file}\\' download=\\'${data.fileName}\\'>دانلود</a>')">`;
+          } else if (data.fileType.startsWith('video/')) {
+            item.innerHTML = `<strong>${data.nickname}:</strong> <video controls style="max-width: 200px;"><source src="${data.file}" type="${data.fileType}">${data.fileName}</video><br><a href="${data.file}" download="${data.fileName}">دانلود</a>`;
+          } else if (data.fileType.startsWith('audio/')) {
+            item.innerHTML = `<strong>${data.nickname}:</strong> <audio controls style="max-width: 200px;"><source src="${data.file}" type="${data.fileType}">${data.fileName}</audio><br><a href="${data.file}" download="${data.fileName}">دانلود</a>`;
+          } else if (data.fileType === 'application/pdf') {
             item.innerHTML = `<strong>${data.nickname}:</strong> <a href="${data.file}" download="${data.fileName}">${data.fileName}</a>`;
           }
           messages.appendChild(item);
           scrollToBottom(); // Scroll to bottom after receiving a file
+        });
+
+        socket.on('file upload error', function(data) {
+          alert(data.message);
         });
 
         socket.on('clear messages', function() {
@@ -242,6 +258,15 @@
 
         function scrollToBottom() {
           messages.scrollTop = messages.scrollHeight;
+        }
+
+        window.openPopup = function(content) {
+          popupContent.innerHTML = content;
+          popup.classList.remove('hidden');
+        }
+
+        window.closePopup = function() {
+          popup.classList.add('hidden');
         }
       });
   </script>
