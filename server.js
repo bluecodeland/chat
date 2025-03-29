@@ -119,16 +119,6 @@ app.get('/get-socket-server-url', (req, res) => {
   res.json({ url: process.env.SOCKET_SERVER_URL });
 });
 
-app.get('/get-messages', (req, res) => {
-  db.all(`SELECT nickname, message, timestamp FROM messages ORDER BY timestamp ASC`, [], (err, rows) => {
-    if (err) {
-      res.status(500).send({ success: false, error: 'Failed to retrieve messages' });
-    } else {
-      res.send({ success: true, messages: rows });
-    }
-  });
-});
-
 // Endpoint برای دریافت فایل‌ها
 app.get('/get-files', (req, res) => {
   db.all(`SELECT nickname, fileName, fileData, timestamp FROM files ORDER BY timestamp ASC`, [], (err, rows) => {
@@ -136,6 +126,17 @@ app.get('/get-files', (req, res) => {
       res.status(500).send({ success: false, error: 'Failed to retrieve files' });
     } else {
       res.send({ success: true, files: rows });
+    }
+  });
+});
+
+// Endpoint برای دریافت پیام‌ها
+app.get('/get-messages', (req, res) => {
+  db.all(`SELECT nickname, message, timestamp FROM messages ORDER BY timestamp ASC`, [], (err, rows) => {
+    if (err) {
+      res.status(500).send({ success: false, error: 'Failed to retrieve messages' });
+    } else {
+      res.send({ success: true, messages: rows });
     }
   });
 });
@@ -169,7 +170,12 @@ io.on('connection', (socket) => {
       if (err) {
         console.error('Failed to clear messages', err);
       }
-      io.emit('clear messages');
+      db.run(`DELETE FROM files`, (err) => {
+        if (err) {
+          console.error('Failed to clear files', err);
+        }
+        io.emit('clear messages');
+      });
     });
   });
 
