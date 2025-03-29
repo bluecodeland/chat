@@ -121,6 +121,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Serve favicon.ico
+app.get('/favicon.ico', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
+});
+
 // Endpoint to get the socket server URL from environment variables
 app.get('/get-socket-server-url', (req, res) => {
   res.json({ url: process.env.SOCKET_SERVER_URL });
