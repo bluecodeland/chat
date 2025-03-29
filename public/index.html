@@ -68,6 +68,14 @@
         const uploadButton = document.getElementById('upload-button');
         const clearButton = document.getElementById('clear-button');
 
+        function handleTyping() {
+          clearTimeout(typingTimeout);
+          socket.emit('typing', { nickname: socket.nickname });
+          typingTimeout = setTimeout(() => {
+            socket.emit('stop typing', { nickname: socket.nickname });
+          }, 3000);
+        }
+
         window.login = function() {
           const username = document.getElementById('username').value;
           const password = document.getElementById('password').value;
@@ -227,14 +235,6 @@
             uploadButton.classList.remove('hidden');
             clearButton.classList.remove('hidden');
           }
-        }
-
-        function handleTyping() {
-          clearTimeout(typingTimeout);
-          socket.emit('typing', { nickname: socket.nickname });
-          typingTimeout = setTimeout(() => {
-            socket.emit('stop typing', { nickname: socket.nickname });
-          }, 3000);
         }
 
         input.addEventListener('input', handleTyping);
