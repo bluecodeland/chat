@@ -129,6 +129,17 @@ app.get('/get-messages', (req, res) => {
   });
 });
 
+// Endpoint برای دریافت فایل‌ها
+app.get('/get-files', (req, res) => {
+  db.all(`SELECT nickname, fileName, fileData, timestamp FROM files ORDER BY timestamp ASC`, [], (err, rows) => {
+    if (err) {
+      res.status(500).send({ success: false, error: 'Failed to retrieve files' });
+    } else {
+      res.send({ success: true, files: rows });
+    }
+  });
+});
+
 // Share session with Socket.io
 io.use(sharedSession(sessionMiddleware, {
   autoSave: true

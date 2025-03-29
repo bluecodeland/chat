@@ -33,7 +33,9 @@
       </div>
       <form id="form" class="flex p-4 chat-input-container">
         <input id="input" autocomplete="off" class="flex-grow p-2 border dark:bg-gray-800 dark:text-gray-300 chat-input" />
+        <input id="file-input" type="file" class="hidden" onchange="uploadFile(event)" />
         <button class="chat-send-button mr-2 ml-2"><i class="fas fa-paper-plane"></i></button>
+        <button type="button" class="chat-upload-button" onclick="document.getElementById('file-input').click()"><i class="fas fa-upload"></i></button>
         <button type="button" class="chat-clear-button" onclick="clearMessages()"><i class="fas fa-trash-alt"></i></button>
       </form>
     </div>
@@ -72,6 +74,7 @@
               chatDiv.classList.remove('hidden');
               socket.nickname = data.nickname; // Store the nickname in the socket object
               loadMessages(); // Load old messages after successful login
+              loadFiles(); // Load old files after successful login
             } else {
               alert('ورود ناموفق بود');
             }
@@ -94,6 +97,28 @@
             });
         }
 
+        function loadFiles() {
+          fetch('/get-files')
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                data.files.forEach(file => {
+                  const item = document.createElement('li');
+                  item.classList.add('text-right', 'mb-2', 'chat-message');
+                  if (file.fileName.match(/\.(jpeg|jpg|gif|png)$/)) {
+                    item.innerHTML = `<strong>${file.nickname}:</strong> <img src="${file.fileData}" alt="${file.fileName}" style="max-width: 200px;" />`;
+                  } else if (file.fileName.match(/\.(mp4|webm|ogg)$/)) {
+                    item.innerHTML = `<strong>${file.nickname}:</strong> <video controls style="max-width: 200px;"><source src="${file.fileData}" type="video/mp4">${file.fileName}</video>`;
+                  } else {
+                    item.innerHTML = `<strong>${file.nickname}:</strong> <a href="${file.fileData}" download>${file.fileName}</a>`;
+                  }
+                  messages.appendChild(item);
+                });
+                scrollToBottom(); // Scroll to bottom after loading files
+              }
+            });
+        }
+
         form.addEventListener('submit', function(e) {
           e.preventDefault();
           if (input.value) {
@@ -111,6 +136,20 @@
           scrollToBottom(); // Scroll to bottom after receiving a message
         });
 
+        socket.on('file upload', function(data) {
+          const item = document.createElement('li');
+          item.classList.add('text-right', 'mb-2', 'chat-message');
+          if (data.fileName.match(/\.(jpeg|jpg|gif|png)$/)) {
+            item.innerHTML = `<strong>${data.nickname}:</strong> <img src="${data.file}" alt="${data.fileName}" style="max-width: 200px;" />`;
+          } else if (data.fileName.match(/\.(mp4|webm|ogg)$/)) {
+            item.innerHTML = `<strong>${data.nickname}:</strong> <video controls style="max-width: 200px;"><source src="${data.file}" type="video/mp4">${data.fileName}</video>`;
+          } else {
+            item.innerHTML = `<strong>${data.nickname}:</strong> <a href="${data.file}" download>${data.fileName}</a>`;
+          }
+          messages.appendChild(item);
+          scrollToBottom(); // Scroll to bottom after receiving a file
+        });
+
         socket.on('clear messages', function() {
           while (messages.firstChild) {
             messages.removeChild(messages.firstChild);
@@ -120,6 +159,17 @@
 
         window.clearMessages = function() {
           socket.emit('clear messages');
+        }
+
+        window.uploadFile = function(event) {
+          const file = event.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+              socket.emit('file upload', { nickname: socket.nickname, fileName: file.name, file: e.target.result });
+            }
+            reader.readAsDataURL(file);
+          }
         }
 
         function scrollToBottom() {
