@@ -21,7 +21,9 @@ const sslOptions = {
 };
 
 const server = https.createServer(sslOptions, app);
-const io = socketIo(server);
+const io = socketIo(server, {
+  transports: ['websocket', 'polling'] // Ensure WebSocket and polling are both enabled
+});
 
 const sessionMiddleware = session({
   store: new SQLiteStore(),
