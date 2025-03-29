@@ -7,6 +7,7 @@ const path = require('path');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const sharedSession = require('express-socket.io-session');
+const sqlite3 = require('sqlite3').verbose();
 
 // Load environment variables
 dotenv.config();
@@ -38,6 +39,51 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// ایجاد دیتابیس SQLite
+const db = new sqlite3.Database('./chat.db', (err) => {
+  if (err) {
+    console.error('Failed to connect to SQLite database', err);
+  } else {
+    console.log('Connected to SQLite database');
+  }
+});
+
+// ایجاد جداول
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nickname TEXT,
+    message TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nickname TEXT,
+    fileName TEXT,
+    fileData TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+});
+
+// ذخیره پیام‌ها در دیتابیس
+function saveMessage(nickname, message) {
+  db.run(`INSERT INTO messages (nickname, message) VALUES (?, ?)`, [nickname, message], (err) => {
+    if (err) {
+      console.error('Failed to save message', err);
+    }
+  });
+}
+
+// ذخیره فایل‌ها در دیتابیس
+function saveFile(nickname, fileName, fileData) {
+  db.run(`INSERT INTO files (nickname, fileName, fileData) VALUES (?, ?, ?)`, [nickname, fileName, fileData], (err) => {
+    if (err) {
+      console.error('Failed to save file', err);
+    }
+  });
+}
 
 // Function to check if the provided username and password are valid
 function isValidUser(username, password) {
@@ -83,11 +129,22 @@ io.on('connection', (socket) => {
   console.log('User connected');
 
   socket.on('chat message', (data) => {
+    saveMessage(data.nickname, data.message);
     io.emit('chat message', { nickname: data.nickname, message: data.message });
   });
 
+  socket.on('file upload', (data) => {
+    saveFile(data.nickname, data.fileName, data.file);
+    io.emit('file upload', { nickname: data.nickname, fileName: data.fileName, file: data.file });
+  });
+
   socket.on('clear messages', () => {
-    io.emit('clear messages');
+    db.run(`DELETE FROM messages`, (err) => {
+      if (err) {
+        console.error('Failed to clear messages', err);
+      }
+      io.emit('clear messages');
+    });
   });
 
   socket.on('disconnect', () => {
