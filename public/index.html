@@ -76,6 +76,18 @@
           }, 3000);
         }
 
+        function toggleSendButton() {
+          if (input.value.trim() !== '') {
+            sendButton.classList.remove('hidden');
+            uploadButton.classList.add('hidden');
+            clearButton.classList.add('hidden');
+          } else {
+            sendButton.classList.add('hidden');
+            uploadButton.classList.remove('hidden');
+            clearButton.classList.remove('hidden');
+          }
+        }
+
         window.login = function() {
           const username = document.getElementById('username').value;
           const password = document.getElementById('password').value;
@@ -222,18 +234,6 @@
               }, 200);
             }
             reader.readAsDataURL(file);
-          }
-        }
-
-        window.toggleSendButton = function() {
-          if (input.value.trim() !== '') {
-            sendButton.classList.remove('hidden');
-            uploadButton.classList.add('hidden');
-            clearButton.classList.add('hidden');
-          } else {
-            sendButton.classList.add('hidden');
-            uploadButton.classList.remove('hidden');
-            clearButton.classList.remove('hidden');
           }
         }
 
