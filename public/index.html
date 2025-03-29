@@ -38,36 +38,8 @@
           <button id="send-button" class="chat-send-button p-2 hidden" type="submit"><i class="fas fa-paper-plane"></i></button>
           <button id="upload-button" class="chat-upload-button p-2" type="button" onclick="document.getElementById('file-input').click()"><i class="fas fa-upload"></i></button>
           <button id="clear-button" class="chat-clear-button p-2" type="button" onclick="clearMessages()"><i class="fas fa-trash-alt"></i></button>
-          <button id="call-button" class="chat-call-button p-2" type="button" onclick="showUserList()"><i class="fas fa-phone"></i></button>
         </div>
       </form>
-    </div>
-    <div id="user-list-popup" class="hidden fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-      <div class="bg-white dark:bg-gray-800 p-4 rounded-lg w-80">
-        <h2 class="text-lg font-bold mb-4">انتخاب کاربر برای تماس</h2>
-        <ul id="user-list" class="list-none p-0"></ul>
-        <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mt-4" onclick="hideUserList()">لغو</button>
-      </div>
-    </div>
-    <div id="call-popup" class="hidden fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-      <div class="bg-white dark:bg-gray-800 p-4 rounded-lg w-80">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-lg font-bold">تماس صوتی</h2>
-          <button class="text-red-500" onclick="endCall()"><i class="fas fa-phone-slash"></i></button>
-        </div>
-        <div class="flex justify-between items-center">
-          <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="toggleSpeaker()"><i class="fas fa-volume-up"></i> بلندگو</button>
-        </div>
-      </div>
-    </div>
-    <div id="incoming-call-popup" class="hidden fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-      <div class="bg-white dark:bg-gray-800 p-4 rounded-lg w-80">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-lg font-bold">تماس ورودی</h2>
-          <button class="text-green-500" onclick="answerCall()"><i class="fas fa-phone"></i></button>
-          <button class="text-red-500" onclick="rejectCall()"><i class="fas fa-phone-slash"></i></button>
-        </div>
-      </div>
     </div>
   </div>
   <script src="/socket.io/socket.io.js"></script>
@@ -100,11 +72,6 @@
         const sendButton = document.getElementById('send-button');
         const uploadButton = document.getElementById('upload-button');
         const clearButton = document.getElementById('clear-button');
-        const callButton = document.getElementById('call-button');
-        const callPopup = document.getElementById('call-popup');
-        const userListPopup = document.getElementById('user-list-popup');
-        const userList = document.getElementById('user-list');
-        const incomingCallPopup = document.getElementById('incoming-call-popup');
 
         window.login = function() {
           const username = document.getElementById('username').value;
@@ -124,7 +91,6 @@
               socket.nickname = data.nickname; // Store the nickname in the socket object
               loadMessages(); // Load old messages after successful login
               loadFiles(); // Load old files after successful login
-              loadUsers(); // Load user list after successful login
             } else {
               alert('ورود ناموفق بود');
             }
@@ -170,23 +136,6 @@
               }
             });
         }
-
-        function loadUsers() {
-          socket.emit('get users');
-        }
-
-        socket.on('user list', function(users) {
-          userList.innerHTML = '';
-          users.forEach(user => {
-            if (user !== socket.nickname) {
-              const item = document.createElement('li');
-              item.classList.add('mb-2', 'cursor-pointer', 'hover:bg-gray-200', 'dark:hover:bg-gray-700', 'p-2', 'rounded');
-              item.innerText = user;
-              item.onclick = () => startCall(user);
-              userList.appendChild(item);
-            }
-          });
-        });
 
         form.addEventListener('submit', function(e) {
           e.preventDefault();
@@ -255,150 +204,6 @@
             clearButton.classList.remove('hidden');
           }
         }
-
-        window.showUserList = function() {
-          userListPopup.classList.remove('hidden');
-        }
-
-        window.hideUserList = function() {
-          userListPopup.classList.add('hidden');
-        }
-
-        window.startCall = function(user) {
-          selectedUser = user;
-          navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-            .then(stream => {
-              localStream = stream;
-              callPopup.classList.remove('hidden');
-              socket.emit('start call', { from: socket.nickname, to: selectedUser });
-              hideUserList();
-            })
-            .catch(error => {
-              console.error('Error accessing media devices.', error);
-            });
-        }
-
-        window.endCall = function() {
-          if (peerConnection) {
-            peerConnection.close();
-            peerConnection = null;
-          }
-          if (localStream) {
-            localStream.getTracks().forEach(track => track.stop());
-          }
-          if (remoteStream) {
-            remoteStream.getTracks().forEach(track => track.stop());
-          }
-          callPopup.classList.add('hidden');
-          socket.emit('end call', { to: selectedUser });
-        }
-
-        window.answerCall = function() {
-          incomingCallPopup.classList.add('hidden');
-          navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-            .then(stream => {
-              localStream = stream;
-              callPopup.classList.remove('hidden');
-              socket.emit('answer call', { from: selectedUser, answer: true });
-            })
-            .catch(error => {
-              console.error('Error accessing media devices.', error);
-            });
-        }
-
-        window.rejectCall = function() {
-          incomingCallPopup.classList.add('hidden');
-          socket.emit('answer call', { from: selectedUser, answer: false });
-        }
-
-        window.toggleSpeaker = function() {
-          const audioElement = document.createElement('audio');
-          audioElement.srcObject = remoteStream;
-          audioElement.play();
-        }
-
-        socket.on('incoming call', function(data) {
-          selectedUser = data.from;
-          incomingCallPopup.classList.remove('hidden');
-        });
-
-        socket.on('call answered', function(data) {
-          if (data.answer) {
-            peerConnection = new RTCPeerConnection(config);
-            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-            peerConnection.ontrack = event => {
-              if (!remoteStream) {
-                remoteStream = new MediaStream();
-                const audioElement = document.createElement('audio');
-                audioElement.srcObject = remoteStream;
-                audioElement.play();
-              }
-              remoteStream.addTrack(event.track);
-            };
-
-            peerConnection.onicecandidate = event => {
-              if (event.candidate) {
-                socket.emit('ice-candidate', { to: selectedUser, candidate: event.candidate });
-              }
-            };
-
-            peerConnection.createOffer()
-              .then(offer => {
-                return peerConnection.setLocalDescription(offer);
-              })
-              .then(() => {
-                socket.emit('offer', { to: selectedUser, offer: peerConnection.localDescription });
-              });
-          } else {
-            alert('تماس رد شد');
-            endCall();
-          }
-        });
-
-        socket.on('offer', offer => {
-          peerConnection = new RTCPeerConnection(config);
-          localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-          peerConnection.setRemoteDescription(new RTCSessionDescription(offer.offer));
-
-          peerConnection.ontrack = event => {
-            if (!remoteStream) {
-              remoteStream = new MediaStream();
-              const audioElement = document.createElement('audio');
-              audioElement.srcObject = remoteStream;
-              audioElement.play();
-            }
-            remoteStream.addTrack(event.track);
-          };
-
-          peerConnection.onicecandidate = event => {
-            if (event.candidate) {
-              socket.emit('ice-candidate', { to: offer.from, candidate: event.candidate });
-            }
-          };
-
-          peerConnection.createAnswer()
-            .then(answer => {
-              return peerConnection.setLocalDescription(answer);
-            })
-            .then(() => {
-              socket.emit('answer', { to: offer.from, answer: peerConnection.localDescription });
-            });
-        });
-
-        socket.on('answer', answer => {
-          peerConnection.setRemoteDescription(new RTCSessionDescription(answer.answer));
-        });
-
-        socket.on('ice-candidate', candidate => {
-          if (peerConnection) {
-            peerConnection.addIceCandidate(new RTCIceCandidate(candidate.candidate));
-          }
-        });
-
-        socket.on('end call', () => {
-          endCall();
-        });
 
         function scrollToBottom() {
           messages.scrollTop = messages.scrollHeight;
