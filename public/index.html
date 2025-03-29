@@ -38,12 +38,33 @@
           <button id="send-button" class="chat-send-button p-2 hidden" type="submit"><i class="fas fa-paper-plane"></i></button>
           <button id="upload-button" class="chat-upload-button p-2" type="button" onclick="document.getElementById('file-input').click()"><i class="fas fa-upload"></i></button>
           <button id="clear-button" class="chat-clear-button p-2" type="button" onclick="clearMessages()"><i class="fas fa-trash-alt"></i></button>
+          <button id="call-button" class="chat-call-button p-2" type="button" onclick="startCall()"><i class="fas fa-phone"></i></button>
         </div>
       </form>
+    </div>
+    <div id="call-popup" class="hidden fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+      <div class="bg-white dark:bg-gray-800 p-4 rounded-lg w-80">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-bold">تماس صوتی</h2>
+          <button class="text-red-500" onclick="endCall()"><i class="fas fa-phone-slash"></i></button>
+        </div>
+        <div class="flex justify-between items-center">
+          <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="toggleSpeaker()"><i class="fas fa-volume-up"></i> بلندگو</button>
+        </div>
+      </div>
     </div>
   </div>
   <script src="/socket.io/socket.io.js"></script>
   <script>
+    let localStream;
+    let peerConnection;
+    const config = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'turn:TURN_SERVER_URL', username: 'USERNAME', credential: 'CREDENTIAL' }
+      ]
+    };
+
     fetch('/get-socket-server-url')
       .then(response => response.json())
       .then(data => {
@@ -51,7 +72,7 @@
           secure: true,
           rejectUnauthorized: false
         });
-        
+
         const loginForm = document.getElementById('loginForm');
         const loginDiv = document.getElementById('login');
         const chatDiv = document.getElementById('chat');
@@ -61,6 +82,8 @@
         const sendButton = document.getElementById('send-button');
         const uploadButton = document.getElementById('upload-button');
         const clearButton = document.getElementById('clear-button');
+        const callButton = document.getElementById('call-button');
+        const callPopup = document.getElementById('call-popup');
 
         window.login = function() {
           const username = document.getElementById('username').value;
@@ -193,6 +216,83 @@
             clearButton.classList.remove('hidden');
           }
         }
+
+        window.startCall = function() {
+          navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            .then(stream => {
+              localStream = stream;
+              callPopup.classList.remove('hidden');
+              socket.emit('start call');
+            })
+            .catch(error => {
+              console.error('Error accessing media devices.', error);
+            });
+        }
+
+        window.endCall = function() {
+          if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+          }
+          localStream.getTracks().forEach(track => track.stop());
+          callPopup.classList.add('hidden');
+          socket.emit('end call');
+        }
+
+        window.toggleSpeaker = function() {
+          const audioElement = document.createElement('audio');
+          audioElement.srcObject = localStream;
+          audioElement.play();
+        }
+
+        socket.on('start call', () => {
+          peerConnection = new RTCPeerConnection(config);
+          peerConnection.addStream(localStream);
+
+          peerConnection.onaddstream = event => {
+            const remoteStream = event.stream;
+            const audioElement = document.createElement('audio');
+            audioElement.srcObject = remoteStream;
+            audioElement.play();
+          };
+
+          peerConnection.createOffer()
+            .then(offer => {
+              return peerConnection.setLocalDescription(offer);
+            })
+            .then(() => {
+              socket.emit('offer', peerConnection.localDescription);
+            });
+        });
+
+        socket.on('offer', offer => {
+          peerConnection = new RTCPeerConnection(config);
+          peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+          peerConnection.addStream(localStream);
+
+          peerConnection.onaddstream = event => {
+            const remoteStream = event.stream;
+            const audioElement = document.createElement('audio');
+            audioElement.srcObject = remoteStream;
+            audioElement.play();
+          };
+
+          peerConnection.createAnswer()
+            .then(answer => {
+              return peerConnection.setLocalDescription(answer);
+            })
+            .then(() => {
+              socket.emit('answer', peerConnection.localDescription);
+            });
+        });
+
+        socket.on('answer', answer => {
+          peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        });
+
+        socket.on('end call', () => {
+          endCall();
+        });
 
         function scrollToBottom() {
           messages.scrollTop = messages.scrollHeight;

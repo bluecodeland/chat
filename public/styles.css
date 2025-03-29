@@ -91,7 +91,7 @@ button i {
   width: calc(100% - 120px); /* Adjust the width to leave space for the buttons */
 }
 
-.chat-send-button, .chat-upload-button, .chat-clear-button {
+.chat-send-button, .chat-upload-button, .chat-clear-button, .chat-call-button {
   background-color: #4a5568; /* Gray-700 */
   color: #fff;
   border: none;
@@ -100,7 +100,7 @@ button i {
   padding: 0.5rem;
 }
 
-.chat-send-button:hover, .chat-upload-button:hover, .chat-clear-button:hover {
+.chat-send-button:hover, .chat-upload-button:hover, .chat-clear-button:hover, .chat-call-button:hover {
   background-color: #2d3748; /* Gray-800 */
 }
 
@@ -131,4 +131,16 @@ button i {
   background-color: #f8d7da; /* Light red background for received messages */
   align-self: flex-start;
   text-align: left;
+}
+
+#call-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  z-index: 1000;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
