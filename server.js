@@ -179,6 +179,22 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('typing', (data) => {
+    socket.broadcast.emit('typing', data);
+  });
+
+  socket.on('stop typing', (data) => {
+    socket.broadcast.emit('stop typing', data);
+  });
+
+  socket.on('file sending', (data) => {
+    socket.broadcast.emit('file sending', data);
+  });
+
+  socket.on('stop file sending', (data) => {
+    socket.broadcast.emit('stop file sending', data);
+  });
+
   socket.on('get users', () => {
     const users = [];
     for (const [id, socket] of io.of('/').sockets) {
