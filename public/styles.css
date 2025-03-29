@@ -1,6 +1,6 @@
 body {
   direction: rtl;
-  font-family:Vazir;
+  font-family: Vazir;
 }
 
 .chat-container {
@@ -45,41 +45,41 @@ body {
 }
 
 .button-container {
-    display: flex;
-    align-items: center;
+  display: flex;
+  align-items: center;
 }
 
 button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 50px; /* Adjust the size as needed */
-    height: 50px; /* Adjust the size as needed */
-    border-radius: 50%;
-    border: none;
-    font-size: 24px; /* Adjust the font size as needed */
-    cursor: pointer;
-    transition: background-color 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px; /* Adjust the size as needed */
+  height: 50px; /* Adjust the size as needed */
+  border-radius: 50%;
+  border: none;
+  font-size: 24px; /* Adjust the font size as needed */
+  cursor: pointer;
+  transition: background-color 0.3s;
 }
 
 .chat-send-button {
-    background-color: #1D4ED8; /* Blue background */
-    color: white;
+  background-color: #1D4ED8; /* Blue background */
+  color: white;
 }
 
 .chat-clear-button {
-    background-color: #DC2626; /* Red background */
-    color: white;
-    margin-left: 10px; /* Space between buttons */
+  background-color: #DC2626; /* Red background */
+  color: white;
+  margin-left: 10px; /* Space between buttons */
 }
 
 button:hover {
-    background-color: #3B82F6; /* Lighter blue for hover effect */
+  background-color: #3B82F6; /* Lighter blue for hover effect */
 }
 
 button i {
-    display: block;
-    margin: auto;
+  display: block;
+  margin: auto;
 }
 
 .chat-input-container {
