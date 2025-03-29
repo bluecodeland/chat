@@ -66,6 +66,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     let localStream;
+    let remoteStream;
     let peerConnection;
     const config = {
       iceServers: [
@@ -244,7 +245,12 @@
             peerConnection.close();
             peerConnection = null;
           }
-          localStream.getTracks().forEach(track => track.stop());
+          if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+          }
+          if (remoteStream) {
+            remoteStream.getTracks().forEach(track => track.stop());
+          }
           callPopup.classList.add('hidden');
           socket.emit('end call');
         }
@@ -280,13 +286,22 @@
         socket.on('call answered', function(data) {
           if (data.answer) {
             peerConnection = new RTCPeerConnection(config);
-            peerConnection.addStream(localStream);
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
-            peerConnection.onaddstream = event => {
-              const remoteStream = event.stream;
-              const audioElement = document.createElement('audio');
-              audioElement.srcObject = remoteStream;
-              audioElement.play();
+            peerConnection.ontrack = event => {
+              if (!remoteStream) {
+                remoteStream = new MediaStream();
+                const audioElement = document.createElement('audio');
+                audioElement.srcObject = remoteStream;
+                audioElement.play();
+              }
+              remoteStream.addTrack(event.track);
+            };
+
+            peerConnection.onicecandidate = event => {
+              if (event.candidate) {
+                socket.emit('ice-candidate', { to: data.to, candidate: event.candidate });
+              }
             };
 
             peerConnection.createOffer()
@@ -294,7 +309,7 @@
                 return peerConnection.setLocalDescription(offer);
               })
               .then(() => {
-                socket.emit('offer', peerConnection.localDescription);
+                socket.emit('offer', { to: data.to, offer: peerConnection.localDescription });
               });
           } else {
             alert('تماس رد شد');
@@ -304,14 +319,23 @@
 
         socket.on('offer', offer => {
           peerConnection = new RTCPeerConnection(config);
-          peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-          peerConnection.addStream(localStream);
+          localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+          peerConnection.setRemoteDescription(new RTCSessionDescription(offer.offer));
 
-          peerConnection.onaddstream = event => {
-            const remoteStream = event.stream;
-            const audioElement = document.createElement('audio');
-            audioElement.srcObject = remoteStream;
-            audioElement.play();
+          peerConnection.ontrack = event => {
+            if (!remoteStream) {
+              remoteStream = new MediaStream();
+              const audioElement = document.createElement('audio');
+              audioElement.srcObject = remoteStream;
+              audioElement.play();
+            }
+            remoteStream.addTrack(event.track);
+          };
+
+          peerConnection.onicecandidate = event => {
+            if (event.candidate) {
+              socket.emit('ice-candidate', { to: offer.offer.from, candidate: event.candidate });
+            }
           };
 
           peerConnection.createAnswer()
@@ -319,12 +343,18 @@
               return peerConnection.setLocalDescription(answer);
             })
             .then(() => {
-              socket.emit('answer', peerConnection.localDescription);
+              socket.emit('answer', { to: offer.offer.from, answer: peerConnection.localDescription });
             });
         });
 
         socket.on('answer', answer => {
-          peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+          peerConnection.setRemoteDescription(new RTCSessionDescription(answer.answer));
+        });
+
+        socket.on('ice-candidate', candidate => {
+          if (peerConnection) {
+            peerConnection.addIceCandidate(new RTCIceCandidate(candidate.candidate));
+          }
         });
 
         socket.on('end call', () => {

@@ -187,6 +187,18 @@ io.on('connection', (socket) => {
     io.emit('call answered', { to: data.to, answer: data.answer });
   });
 
+  socket.on('offer', (data) => {
+    io.to(data.to).emit('offer', data);
+  });
+
+  socket.on('answer', (data) => {
+    io.to(data.to).emit('answer', data);
+  });
+
+  socket.on('ice-candidate', (data) => {
+    io.to(data.to).emit('ice-candidate', data);
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected');
   });
