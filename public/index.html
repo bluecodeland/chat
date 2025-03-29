@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>برنامه چت</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" integrity="sha384-SZXxX4whJ79/gErwcOYf+zWLeJdY/qpuqC4cAa9rOGUstPomtqpuNWT9wdPEn2fk" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" integrity="sha384-SZXxX4whJ79/gErwcOYf+zWLeJdY/qpuqC4cAa9rOGUstPomtqpuNWT9wdPEn2fk" crossorigin="anonymous">
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
   <link rel="stylesheet" href="styles.css">
@@ -16,11 +16,11 @@
       <form id="loginForm" class="w-full max-w-sm">
         <div class="mb-4">
           <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" for="username">نام کاربری</label>
-          <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:bg-gray-800 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline" id="username" type="text">
+          <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:bg-gray-800 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline" id="username" type="text" placeholder="نام کاربری">
         </div>
         <div class="mb-6">
           <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" for="password">رمز عبور</label>
-          <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:bg-gray-800 dark:text-gray-300 mb-3 leading-tight focus:outline-none focus:shadow-outline" id="password" type="password">
+          <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:bg-gray-800 dark:text-gray-300 mb-3 leading-tight focus:outline-none focus:shadow-outline" id="password" type="password" placeholder="******************">
         </div>
         <div class="flex items-center justify-between">
           <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="button" onclick="login()">ورود</button>
@@ -33,7 +33,6 @@
       </div>
       <form id="form" class="flex p-4 chat-input-container">
         <input id="input" autocomplete="off" class="flex-grow p-2 border dark:bg-gray-800 dark:text-gray-300 chat-input" />
-        <input type="file" id="fileInput" class="chat-file-input" />
         <button class="chat-send-button mr-2 ml-2"><i class="fas fa-paper-plane"></i></button>
         <button type="button" class="chat-clear-button" onclick="clearMessages()"><i class="fas fa-trash-alt"></i></button>
       </form>
@@ -41,6 +40,76 @@
   </div>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.0.3/index.js"></script>
-  <script src="scripts.js"></script>
+  <script>
+    fetch('/get-socket-server-url')
+      .then(response => response.json())
+      .then(data => {
+        const socket = io(data.url, {
+          secure: true,
+          rejectUnauthorized: false
+        });
+        
+        const loginForm = document.getElementById('loginForm');
+        const loginDiv = document.getElementById('login');
+        const chatDiv = document.getElementById('chat');
+        const messages = document.getElementById('messages');
+        const form = document.getElementById('form');
+        const input = document.getElementById('input');
+
+        window.login = function() {
+          const username = document.getElementById('username').value;
+          const password = document.getElementById('password').value;
+          fetch('/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              loginDiv.classList.add('hidden');
+              chatDiv.classList.remove('hidden');
+              socket.nickname = data.nickname; // Store the nickname in the socket object
+            } else {
+              alert('ورود ناموفق بود');
+            }
+          });
+        }
+
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          if (input.value) {
+            socket.emit('chat message', { nickname: socket.nickname, message: input.value });
+            input.value = '';
+            scrollToBottom(); // Scroll to bottom after sending a message
+          }
+        });
+
+        socket.on('chat message', function(data) {
+          const item = document.createElement('li');
+          item.classList.add('text-right', 'mb-2', 'chat-message');
+          item.innerHTML = `<strong>${data.nickname}:</strong> ${data.message}`;
+          messages.appendChild(item);
+          scrollToBottom(); // Scroll to bottom after receiving a message
+        });
+
+        socket.on('clear messages', function() {
+          while (messages.firstChild) {
+            messages.removeChild(messages.firstChild);
+          }
+          scrollToBottom(); // Scroll to bottom after clearing messages
+        });
+
+        window.clearMessages = function() {
+          socket.emit('clear messages');
+        }
+
+        function scrollToBottom() {
+          messages.scrollTop = messages.scrollHeight;
+        }
+      });
+  </script>
 </body>
 </html>
