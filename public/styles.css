@@ -103,3 +103,7 @@ button i {
 .chat-send-button:hover, .chat-upload-button:hover, .chat-clear-button:hover {
   background-color: #2d3748; /* Gray-800 */
 }
+
+.hidden {
+  display: none;
+}
