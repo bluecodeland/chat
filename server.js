@@ -141,7 +141,7 @@ app.get('/get-files', (req, res) => {
 app.get('/get-messages', (req, res) => {
   db.all(`SELECT nickname, message, timestamp FROM messages ORDER BY timestamp ASC`, [], (err, rows) => {
     if (err) {
-      res.status 500.send({ success: false, error: 'Failed to retrieve messages' });
+      res.status(500).send({ success: false, error: 'Failed to retrieve messages' });
     } else {
       res.send({ success: true, messages: rows });
     }
