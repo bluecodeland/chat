@@ -8,7 +8,7 @@ const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const sharedSession = require('express-socket.io-session');
 const sqlite3 = require('sqlite3').verbose();
-const mime = require('mime'); // Add mime library for file type validation
+const mime = require('mime-types'); // Use mime-types library for file type validation
 
 // Load environment variables
 dotenv.config();
@@ -173,7 +173,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('file upload', (data) => {
-    const fileType = mime.getType(data.fileName);
+    const fileType = mime.lookup(data.fileName);
     if (!allowedFileTypes.includes(fileType)) {
       socket.emit('file upload error', { message: 'File type not allowed' });
       return;
