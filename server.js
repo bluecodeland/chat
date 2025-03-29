@@ -195,16 +195,6 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('stop file sending', data);
   });
 
-  socket.on('get users', () => {
-    const users = [];
-    for (const [id, socket] of io.of('/').sockets) {
-      if (socket.handshake.session.loggedIn) {
-        users.push(socket.handshake.session.nickname);
-      }
-    }
-    io.emit('user list', users);
-  });
-
   socket.on('disconnect', () => {
     console.log('User disconnected');
   });
