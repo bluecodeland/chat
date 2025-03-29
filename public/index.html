@@ -16,11 +16,11 @@
       <form id="loginForm" class="w-full max-w-sm">
         <div class="mb-4">
           <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" for="username">نام کاربری</label>
-          <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:bg-gray-800 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline" id="username" type="text" placeholder="نام کاربری">
+          <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:bg-gray-800 dark:text-gray-300 leading-tight focus:outline-none focus:shadow-outline" id="username" type="text">
         </div>
         <div class="mb-6">
           <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" for="password">رمز عبور</label>
-          <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:bg-gray-800 dark:text-gray-300 mb-3 leading-tight focus:outline-none focus:shadow-outline" id="password" type="password" placeholder="******************">
+          <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:bg-gray-800 dark:text-gray-300 mb-3 leading-tight focus:outline-none focus:shadow-outline" id="password" type="password">
         </div>
         <div class="flex items-center justify-between">
           <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="button" onclick="login()">ورود</button>
@@ -71,10 +71,27 @@
               loginDiv.classList.add('hidden');
               chatDiv.classList.remove('hidden');
               socket.nickname = data.nickname; // Store the nickname in the socket object
+              loadMessages(); // Load old messages after successful login
             } else {
               alert('ورود ناموفق بود');
             }
           });
+        }
+
+        function loadMessages() {
+          fetch('/get-messages')
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                data.messages.forEach(message => {
+                  const item = document.createElement('li');
+                  item.classList.add('text-right', 'mb-2', 'chat-message');
+                  item.innerHTML = `<strong>${message.nickname}:</strong> ${message.message}`;
+                  messages.appendChild(item);
+                });
+                scrollToBottom(); // Scroll to bottom after loading messages
+              }
+            });
         }
 
         form.addEventListener('submit', function(e) {
