@@ -93,7 +93,8 @@
               if (data.success) {
                 data.messages.forEach(message => {
                   const item = document.createElement('li');
-                  item.classList.add('text-right', 'mb-2', 'chat-message');
+                  item.classList.add('mb-2', 'chat-message');
+                  item.classList.add(message.nickname === socket.nickname ? 'sent' : 'received');
                   item.innerHTML = `<strong>${message.nickname}:</strong> ${message.message}`;
                   messages.appendChild(item);
                 });
@@ -109,7 +110,8 @@
               if (data.success) {
                 data.files.forEach(file => {
                   const item = document.createElement('li');
-                  item.classList.add('text-right', 'mb-2', 'chat-message');
+                  item.classList.add('mb-2', 'chat-message');
+                  item.classList.add(file.nickname === socket.nickname ? 'sent' : 'received');
                   if (file.fileName.match(/\.(jpeg|jpg|gif|png)$/)) {
                     item.innerHTML = `<strong>${file.nickname}:</strong> <img src="${file.fileData}" alt="${file.fileName}" style="max-width: 200px;" />`;
                   } else if (file.fileName.match(/\.(mp4|webm|ogg)$/)) {
@@ -136,7 +138,8 @@
 
         socket.on('chat message', function(data) {
           const item = document.createElement('li');
-          item.classList.add('text-right', 'mb-2', 'chat-message');
+          item.classList.add('mb-2', 'chat-message');
+          item.classList.add(data.nickname === socket.nickname ? 'sent' : 'received');
           item.innerHTML = `<strong>${data.nickname}:</strong> ${data.message}`;
           messages.appendChild(item);
           scrollToBottom(); // Scroll to bottom after receiving a message
@@ -144,7 +147,8 @@
 
         socket.on('file upload', function(data) {
           const item = document.createElement('li');
-          item.classList.add('text-right', 'mb-2', 'chat-message');
+          item.classList.add('mb-2', 'chat-message');
+          item.classList.add(data.nickname === socket.nickname ? 'sent' : 'received');
           if (data.fileName.match(/\.(jpeg|jpg|gif|png)$/)) {
             item.innerHTML = `<strong>${data.nickname}:</strong> <img src="${data.file}" alt="${data.fileName}" style="max-width: 200px;" />`;
           } else if (data.fileName.match(/\.(mp4|webm|ogg)$/)) {
