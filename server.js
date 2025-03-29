@@ -114,6 +114,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Endpoint to get the socket server URL from environment variables
+app.get('/get-socket-server-url', (req, res) => {
+  res.json({ url: process.env.SOCKET_SERVER_URL });
+});
+
 // Share session with Socket.io
 io.use(sharedSession(sessionMiddleware, {
   autoSave: true
