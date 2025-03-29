@@ -74,6 +74,21 @@ db.serialize(() => {
   )`);
 });
 
+// اجرای مهاجرت برای اضافه کردن ستون fileType در صورت نیاز
+db.serialize(() => {
+  db.run(`ALTER TABLE files ADD COLUMN fileType TEXT`, (err) => {
+    if (err) {
+      if (err.message.includes("duplicate column name")) {
+        console.log("Column 'fileType' already exists.");
+      } else {
+        console.error('Failed to add column fileType to files table', err);
+      }
+    } else {
+      console.log("Column 'fileType' added to files table.");
+    }
+  });
+});
+
 // ذخیره پیام‌ها در دیتابیس
 function saveMessage(nickname, message) {
   db.run(`INSERT INTO messages (nickname, message) VALUES (?, ?)`, [nickname, message], (err) => {
