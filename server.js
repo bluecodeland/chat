@@ -180,11 +180,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('start call', (data) => {
-    io.emit('incoming call', { from: data.from });
+    io.to(data.to).emit('incoming call', { from: data.from });
   });
 
   socket.on('answer call', (data) => {
-    io.emit('call answered', { to: data.to, answer: data.answer });
+    io.to(data.from).emit('call answered', { to: data.to, answer: data.answer });
   });
 
   socket.on('offer', (data) => {
@@ -197,6 +197,16 @@ io.on('connection', (socket) => {
 
   socket.on('ice-candidate', (data) => {
     io.to(data.to).emit('ice-candidate', data);
+  });
+
+  socket.on('get users', () => {
+    const users = [];
+    for (const [id, socket] of io.of('/').sockets) {
+      if (socket.handshake.session.loggedIn) {
+        users.push(socket.handshake.session.nickname);
+      }
+    }
+    io.emit('user list', users);
   });
 
   socket.on('disconnect', () => {

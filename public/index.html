@@ -38,9 +38,16 @@
           <button id="send-button" class="chat-send-button p-2 hidden" type="submit"><i class="fas fa-paper-plane"></i></button>
           <button id="upload-button" class="chat-upload-button p-2" type="button" onclick="document.getElementById('file-input').click()"><i class="fas fa-upload"></i></button>
           <button id="clear-button" class="chat-clear-button p-2" type="button" onclick="clearMessages()"><i class="fas fa-trash-alt"></i></button>
-          <button id="call-button" class="chat-call-button p-2" type="button" onclick="startCall()"><i class="fas fa-phone"></i></button>
+          <button id="call-button" class="chat-call-button p-2" type="button" onclick="showUserList()"><i class="fas fa-phone"></i></button>
         </div>
       </form>
+    </div>
+    <div id="user-list-popup" class="hidden fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+      <div class="bg-white dark:bg-gray-800 p-4 rounded-lg w-80">
+        <h2 class="text-lg font-bold mb-4">انتخاب کاربر برای تماس</h2>
+        <ul id="user-list" class="list-none p-0"></ul>
+        <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mt-4" onclick="hideUserList()">لغو</button>
+      </div>
     </div>
     <div id="call-popup" class="hidden fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
       <div class="bg-white dark:bg-gray-800 p-4 rounded-lg w-80">
@@ -68,6 +75,7 @@
     let localStream;
     let remoteStream;
     let peerConnection;
+    let selectedUser;
     const config = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -94,6 +102,8 @@
         const clearButton = document.getElementById('clear-button');
         const callButton = document.getElementById('call-button');
         const callPopup = document.getElementById('call-popup');
+        const userListPopup = document.getElementById('user-list-popup');
+        const userList = document.getElementById('user-list');
         const incomingCallPopup = document.getElementById('incoming-call-popup');
 
         window.login = function() {
@@ -114,6 +124,7 @@
               socket.nickname = data.nickname; // Store the nickname in the socket object
               loadMessages(); // Load old messages after successful login
               loadFiles(); // Load old files after successful login
+              loadUsers(); // Load user list after successful login
             } else {
               alert('ورود ناموفق بود');
             }
@@ -159,6 +170,23 @@
               }
             });
         }
+
+        function loadUsers() {
+          socket.emit('get users');
+        }
+
+        socket.on('user list', function(users) {
+          userList.innerHTML = '';
+          users.forEach(user => {
+            if (user !== socket.nickname) {
+              const item = document.createElement('li');
+              item.classList.add('mb-2', 'cursor-pointer', 'hover:bg-gray-200', 'dark:hover:bg-gray-700', 'p-2', 'rounded');
+              item.innerText = user;
+              item.onclick = () => startCall(user);
+              userList.appendChild(item);
+            }
+          });
+        });
 
         form.addEventListener('submit', function(e) {
           e.preventDefault();
@@ -228,12 +256,22 @@
           }
         }
 
-        window.startCall = function() {
+        window.showUserList = function() {
+          userListPopup.classList.remove('hidden');
+        }
+
+        window.hideUserList = function() {
+          userListPopup.classList.add('hidden');
+        }
+
+        window.startCall = function(user) {
+          selectedUser = user;
           navigator.mediaDevices.getUserMedia({ audio: true, video: false })
             .then(stream => {
               localStream = stream;
               callPopup.classList.remove('hidden');
-              socket.emit('start call', { from: socket.nickname });
+              socket.emit('start call', { from: socket.nickname, to: selectedUser });
+              hideUserList();
             })
             .catch(error => {
               console.error('Error accessing media devices.', error);
@@ -252,7 +290,7 @@
             remoteStream.getTracks().forEach(track => track.stop());
           }
           callPopup.classList.add('hidden');
-          socket.emit('end call');
+          socket.emit('end call', { to: selectedUser });
         }
 
         window.answerCall = function() {
@@ -261,7 +299,7 @@
             .then(stream => {
               localStream = stream;
               callPopup.classList.remove('hidden');
-              socket.emit('answer call', { to: socket.nickname, answer: true });
+              socket.emit('answer call', { from: selectedUser, answer: true });
             })
             .catch(error => {
               console.error('Error accessing media devices.', error);
@@ -270,16 +308,17 @@
 
         window.rejectCall = function() {
           incomingCallPopup.classList.add('hidden');
-          socket.emit('answer call', { to: socket.nickname, answer: false });
+          socket.emit('answer call', { from: selectedUser, answer: false });
         }
 
         window.toggleSpeaker = function() {
           const audioElement = document.createElement('audio');
-          audioElement.srcObject = localStream;
+          audioElement.srcObject = remoteStream;
           audioElement.play();
         }
 
         socket.on('incoming call', function(data) {
+          selectedUser = data.from;
           incomingCallPopup.classList.remove('hidden');
         });
 
@@ -300,7 +339,7 @@
 
             peerConnection.onicecandidate = event => {
               if (event.candidate) {
-                socket.emit('ice-candidate', { to: data.to, candidate: event.candidate });
+                socket.emit('ice-candidate', { to: selectedUser, candidate: event.candidate });
               }
             };
 
@@ -309,7 +348,7 @@
                 return peerConnection.setLocalDescription(offer);
               })
               .then(() => {
-                socket.emit('offer', { to: data.to, offer: peerConnection.localDescription });
+                socket.emit('offer', { to: selectedUser, offer: peerConnection.localDescription });
               });
           } else {
             alert('تماس رد شد');
@@ -334,7 +373,7 @@
 
           peerConnection.onicecandidate = event => {
             if (event.candidate) {
-              socket.emit('ice-candidate', { to: offer.offer.from, candidate: event.candidate });
+              socket.emit('ice-candidate', { to: offer.from, candidate: event.candidate });
             }
           };
 
@@ -343,7 +382,7 @@
               return peerConnection.setLocalDescription(answer);
             })
             .then(() => {
-              socket.emit('answer', { to: offer.offer.from, answer: peerConnection.localDescription });
+              socket.emit('answer', { to: offer.from, answer: peerConnection.localDescription });
             });
         });
 
