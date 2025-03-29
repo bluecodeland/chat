@@ -81,3 +81,25 @@ button i {
     display: block;
     margin: auto;
 }
+
+
+.chat-input-container {
+  position: relative;
+}
+
+.chat-input {
+  width: calc(100% - 120px); /* Adjust the width to leave space for the buttons */
+}
+
+.chat-send-button, .chat-upload-button, .chat-clear-button {
+  background-color: #4a5568; /* Gray-700 */
+  color: #fff;
+  border: none;
+  border-radius: 0.25rem;
+  margin-left: 0.25rem;
+  padding: 0.5rem;
+}
+
+.chat-send-button:hover, .chat-upload-button:hover, .chat-clear-button:hover {
+  background-color: #2d3748; /* Gray-800 */
+}
