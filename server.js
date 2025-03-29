@@ -179,6 +179,14 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('start call', (data) => {
+    io.emit('incoming call', { from: data.from });
+  });
+
+  socket.on('answer call', (data) => {
+    io.emit('call answered', { to: data.to, answer: data.answer });
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected');
   });

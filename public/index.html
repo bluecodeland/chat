@@ -53,6 +53,15 @@
         </div>
       </div>
     </div>
+    <div id="incoming-call-popup" class="hidden fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+      <div class="bg-white dark:bg-gray-800 p-4 rounded-lg w-80">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-bold">تماس ورودی</h2>
+          <button class="text-green-500" onclick="answerCall()"><i class="fas fa-phone"></i></button>
+          <button class="text-red-500" onclick="rejectCall()"><i class="fas fa-phone-slash"></i></button>
+        </div>
+      </div>
+    </div>
   </div>
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -84,6 +93,7 @@
         const clearButton = document.getElementById('clear-button');
         const callButton = document.getElementById('call-button');
         const callPopup = document.getElementById('call-popup');
+        const incomingCallPopup = document.getElementById('incoming-call-popup');
 
         window.login = function() {
           const username = document.getElementById('username').value;
@@ -222,7 +232,7 @@
             .then(stream => {
               localStream = stream;
               callPopup.classList.remove('hidden');
-              socket.emit('start call');
+              socket.emit('start call', { from: socket.nickname });
             })
             .catch(error => {
               console.error('Error accessing media devices.', error);
@@ -239,30 +249,57 @@
           socket.emit('end call');
         }
 
+        window.answerCall = function() {
+          incomingCallPopup.classList.add('hidden');
+          navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            .then(stream => {
+              localStream = stream;
+              callPopup.classList.remove('hidden');
+              socket.emit('answer call', { to: socket.nickname, answer: true });
+            })
+            .catch(error => {
+              console.error('Error accessing media devices.', error);
+            });
+        }
+
+        window.rejectCall = function() {
+          incomingCallPopup.classList.add('hidden');
+          socket.emit('answer call', { to: socket.nickname, answer: false });
+        }
+
         window.toggleSpeaker = function() {
           const audioElement = document.createElement('audio');
           audioElement.srcObject = localStream;
           audioElement.play();
         }
 
-        socket.on('start call', () => {
-          peerConnection = new RTCPeerConnection(config);
-          peerConnection.addStream(localStream);
+        socket.on('incoming call', function(data) {
+          incomingCallPopup.classList.remove('hidden');
+        });
 
-          peerConnection.onaddstream = event => {
-            const remoteStream = event.stream;
-            const audioElement = document.createElement('audio');
-            audioElement.srcObject = remoteStream;
-            audioElement.play();
-          };
+        socket.on('call answered', function(data) {
+          if (data.answer) {
+            peerConnection = new RTCPeerConnection(config);
+            peerConnection.addStream(localStream);
 
-          peerConnection.createOffer()
-            .then(offer => {
-              return peerConnection.setLocalDescription(offer);
-            })
-            .then(() => {
-              socket.emit('offer', peerConnection.localDescription);
-            });
+            peerConnection.onaddstream = event => {
+              const remoteStream = event.stream;
+              const audioElement = document.createElement('audio');
+              audioElement.srcObject = remoteStream;
+              audioElement.play();
+            };
+
+            peerConnection.createOffer()
+              .then(offer => {
+                return peerConnection.setLocalDescription(offer);
+              })
+              .then(() => {
+                socket.emit('offer', peerConnection.localDescription);
+              });
+          } else {
+            alert('تماس رد شد');
+            endCall();
+          }
         });
 
         socket.on('offer', offer => {
