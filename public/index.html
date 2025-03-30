@@ -149,9 +149,9 @@
                   if (file.fileType.startsWith('image/')) {
                     item.innerHTML = `<strong>${file.nickname}:</strong> <img src="${file.fileData}" alt="${file.fileName}" style="max-width: 200px;" onclick="openPopup('<img src=\\'${file.fileData}\\' alt=\\'${file.fileName}\\' style=\\'max-width: 100%;\\'><br><a href=\\'${file.fileData}\\' download=\\'${file.fileName}\\'>دانلود</a>')">`;
                   } else if (file.fileType.startsWith('video/')) {
-                    item.innerHTML = `<strong>${file.nickname}:</strong> <video controls style="max-width: 200px;"><source src="${file.fileData}" type="${file.fileType}">${file.fileName}</video><br><a href="${file.fileData}" download="${file.fileName}">دانلود</a>`;
+                    item.innerHTML = `<strong>${file.nickname}:</strong> <video controls style="max-width: 200px;"><source src="\\${file.fileData}\\" type="\\${file.fileType}\\">${file.fileName}</video><br><a href="\\${file.fileData}\\" download="\\${file.fileName}\\">دانلود</a>`;
                   } else if (file.fileType.startsWith('audio/')) {
-                    item.innerHTML = `<strong>${file.nickname}:</strong> <audio controls style="max-width: 200px;"><source src="${file.fileData}" type="${file.fileType}">${file.fileName}</audio><br><a href="${file.fileData}" download="${file.fileName}">دانلود</a>`;
+                    item.innerHTML = `<strong>${file.nickname}:</strong> <audio controls style="max-width: 200px;"><source src="\\${file.fileData}\\" type="\\${file.fileType}\\">${file.fileName}</audio><br><a href="\\${file.fileData}\\" download="${file.fileName}">دانلود</a>`;
                   } else if (file.fileType === 'application/pdf') {
                     item.innerHTML = `<strong>${file.nickname}:</strong> <a href="${file.fileData}" target="_blank">${file.fileName}</a>`;
                   }
