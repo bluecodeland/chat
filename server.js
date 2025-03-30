@@ -8,7 +8,7 @@ const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const sharedSession = require('express-socket.io-session');
 const sqlite3 = require('sqlite3').verbose();
-const fileUpload = require('express-fileupload'); // اضافه کردن میان‌افزار express-fileupload
+const fileUpload = require('express-fileupload');
 
 // Load environment variables
 dotenv.config();
@@ -23,7 +23,7 @@ const sslOptions = {
 
 const server = https.createServer(sslOptions, app);
 const io = socketIo(server, {
-  transports: ['websocket', 'polling'], // Ensure WebSocket and polling are both enabled
+  transports: ['websocket', 'polling'],
   maxHttpBufferSize: 1e8, // 100 MB
   pingTimeout: 60000,
   pingInterval: 25000
@@ -40,9 +40,9 @@ const sessionMiddleware = session({
 // Use session middleware
 app.use(sessionMiddleware);
 
-// اضافه کردن میان‌افزار fileUpload با محدودیت حجمی 10 مگابایت
+// Add fileUpload middleware with file size limit
 app.use(fileUpload({
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 مگابایت
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
 }));
 
 // Serve static files from the public directory
@@ -58,14 +58,14 @@ const allowedFileTypes = [
   'image/gif', 
   'video/mp4', 
   'video/webm', 
-  'video/quicktime', // اضافه کردن فرمت mov
+  'video/quicktime', 
   'audio/mpeg', 
-  'audio/mp3', // اضافه کردن فرمت mp3
+  'audio/mp3', 
   'audio/ogg', 
   'application/pdf'
 ];
 
-// ایجاد دیتابیس SQLite
+// Create SQLite database
 const db = new sqlite3.Database('./chat.db', (err) => {
   if (err) {
     console.error('Failed to connect to SQLite database', err);
@@ -74,7 +74,7 @@ const db = new sqlite3.Database('./chat.db', (err) => {
   }
 });
 
-// ایجاد جداول
+// Create tables
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -93,7 +93,7 @@ db.serialize(() => {
   )`);
 });
 
-// ذخیره پیام‌ها در دیتابیس
+// Save messages to the database
 function saveMessage(nickname, message) {
   db.run(`INSERT INTO messages (nickname, message) VALUES (?, ?)`, [nickname, message], (err) => {
     if (err) {
@@ -102,7 +102,7 @@ function saveMessage(nickname, message) {
   });
 }
 
-// ذخیره مسیر فایل‌ها در دیتابیس
+// Save file paths to the database
 function saveFile(nickname, fileName, filePath, fileType) {
   db.run(`INSERT INTO files (nickname, fileName, filePath, fileType) VALUES (?, ?, ?, ?)`, [nickname, fileName, filePath, fileType], (err) => {
     if (err) {
@@ -150,7 +150,7 @@ app.get('/get-socket-server-url', (req, res) => {
   res.json({ url: process.env.SOCKET_SERVER_URL });
 });
 
-// Endpoint برای دریافت فایل‌ها
+// Endpoint to retrieve files
 app.get('/get-files', (req, res) => {
   db.all(`SELECT nickname, fileName, filePath, fileType, timestamp FROM files ORDER BY timestamp ASC`, [], (err, rows) => {
     if (err) {
@@ -161,7 +161,7 @@ app.get('/get-files', (req, res) => {
   });
 });
 
-// Endpoint برای دریافت پیام‌ها
+// Endpoint to retrieve messages
 app.get('/get-messages', (req, res) => {
   db.all(`SELECT nickname, message, timestamp FROM messages ORDER BY timestamp ASC`, [], (err, rows) => {
     if (err) {
