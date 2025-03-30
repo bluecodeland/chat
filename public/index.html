@@ -32,9 +32,9 @@
         <ul id="messages" class="list-none p-0"></ul>
         <div id="typing-status" class="text-gray-600 dark:text-gray-400"></div>
       </div>
-      <form id="upload-form" class="flex p-4 chat-input-container relative" enctype="multipart/form-data">
-        <input id="file-input" type="file" class="hidden" name="file" />
+      <form id="form" class="flex p-4 chat-input-container relative">
         <input id="input" autocomplete="off" class="flex-grow p-2 border dark:bg-gray-800 dark:text-gray-300 chat-input" />
+        <input id="file-input" type="file" class="hidden" onchange="uploadFile(event)" />
         <div class="absolute inset-y-0 left-0 flex items-center space-x-2">
           <button id="send-button" class="chat-send-button p-2 hidden" type="submit"><i class="fas fa-paper-plane"></i></button>
           <button id="upload-button" class="chat-upload-button p-2" type="button" onclick="document.getElementById('file-input').click()"><i class="fas fa-upload"></i></button>
@@ -68,14 +68,13 @@
         const messages = document.getElementById('messages');
         const typingStatus = document.getElementById('typing-status');
         const uploadProgress = document.getElementById('upload-progress');
-        const form = document.getElementById('upload-form'); // Changed to upload-form
+        const form = document.getElementById('form');
         const input = document.getElementById('input');
         const sendButton = document.getElementById('send-button');
         const uploadButton = document.getElementById('upload-button');
         const clearButton = document.getElementById('clear-button');
         const popup = document.getElementById('popup');
         const popupContent = document.getElementById('popup-content');
-        const fileInput = document.getElementById('file-input');
 
         function handleTyping() {
           clearTimeout(typingTimeout);
@@ -112,9 +111,9 @@
             if (data.success) {
               loginDiv.classList.add('hidden');
               chatDiv.classList.remove('hidden');
-              socket.nickname = data.nickname;
-              loadMessages();
-              loadFiles();
+              socket.nickname = data.nickname; // Store the nickname in the socket object
+              loadMessages(); // Load old messages after successful login
+              loadFiles(); // Load old files after successful login
             } else {
               alert('ورود ناموفق بود');
             }
@@ -133,7 +132,7 @@
                   item.innerHTML = `<strong>${message.nickname}:</strong> ${message.message}`;
                   messages.appendChild(item);
                 });
-                scrollToBottom();
+                scrollToBottom(); // Scroll to bottom after loading messages
               }
             });
         }
@@ -148,17 +147,17 @@
                   item.classList.add('mb-2', 'chat-message');
                   item.classList.add(file.nickname === socket.nickname ? 'sent' : 'received');
                   if (file.fileType.startsWith('image/')) {
-                    item.innerHTML = `<strong>${file.nickname}:</strong> <img src="/uploads/${file.fileName}" alt="${file.fileName}" style="max-width: 200px;" onclick="openPopup('<img src=\\'/uploads/${file.fileName}\\' alt=\\'${file.fileName}\\' style=\\'max-width: 100%;\\'><br><a href=\\'/uploads/${file.fileName}\\' download=\\'${file.fileName}\\'>دانلود</a>')">`;
+                    item.innerHTML = `<strong>${file.nickname}:</strong> <img src="${file.fileData}" alt="${file.fileName}" style="max-width: 200px;" onclick="openPopup('<img src=\\'${file.fileData}\\' alt=\\'${file.fileName}\\' style=\\'max-width: 100%;\\'><br><a href=\\'${file.fileData}\\' download=\\'${file.fileName}\\'>دانلود</a>')">`;
                   } else if (file.fileType.startsWith('video/')) {
-                    item.innerHTML = `<strong>${file.nickname}:</strong> <video controls style="max-width: 200px;"><source src="/uploads/${file.fileName}" type="${file.fileType}">${file.fileName}</video><br><a href="/uploads/${file.fileName}" download="${file.fileName}">دانلود</a>`;
+                    item.innerHTML = `<strong>${file.nickname}:</strong> <video controls style="max-width: 200px;"><source src="\\${file.fileData}\\" type="\\${file.fileType}\\">${file.fileName}</video><br><a href="\\${file.fileData}\\" download="\\${file.fileName}\\">دانلود</a>`;
                   } else if (file.fileType.startsWith('audio/')) {
-                    item.innerHTML = `<strong>${file.nickname}:</strong> <audio controls style="max-width: 200px;"><source src="/uploads/${file.fileName}" type="${file.fileType}">${file.fileName}</audio><br><a href="/uploads/${file.fileName}" download="${file.fileName}">دانلود</a>`;
+                    item.innerHTML = `<strong>${file.nickname}:</strong> <audio controls style="max-width: 200px;"><source src="\\${file.fileData}\\" type="\\${file.fileType}\\">${file.fileName}</audio><br><a href="\\${file.fileData}\\" download="${file.fileName}">دانلود</a>`;
                   } else if (file.fileType === 'application/pdf') {
-                    item.innerHTML = `<strong>${file.nickname}:</strong> <a href="/uploads/${file.fileName}" target="_blank">${file.fileName}</a>`;
+                    item.innerHTML = `<strong>${file.nickname}:</strong> <a href="${file.fileData}" target="_blank">${file.fileName}</a>`;
                   }
                   messages.appendChild(item);
-                  scrollToBottom();
                 });
+                scrollToBottom(); // Scroll to bottom after loading files
               }
             });
         }
@@ -172,67 +171,48 @@
             });
             input.value = '';
             toggleSendButton();
-          } else if (fileInput.files.length > 0) {
-            const file = fileInput.files[0];
-            const formData = new FormData();
-            formData.append('file', file);
-
-            uploadProgress.classList.remove('hidden');
-            uploadProgress.textContent = `در حال ارسال: 0%`;
-
-            const xhr = new XMLHttpRequest();
-            xhr.upload.onprogress = function(event) {
-              if (event.lengthComputable) {
-                const progress = Math.round((event.loaded / event.total) * 100);
-                uploadProgress.textContent = `در حال ارسال: ${progress}%`;
-              }
-            };
-
-            xhr.onload = function() {
-              if (xhr.status === 200) {
-                uploadProgress.textContent = `ارسال با موفقیت انجام شد!`;
-                setTimeout(() => {
-                  uploadProgress.classList.add('hidden');
-                  uploadProgress.textContent = '';
-                }, 2000);
-                fileInput.value = '';
-              } else {
-                uploadProgress.textContent = `خطا در ارسال: ${xhr.statusText}`;
-                 setTimeout(() => {
-                  uploadProgress.classList.add('hidden');
-                  uploadProgress.textContent = '';
-                }, 5000);
-              }
-            };
-            xhr.onerror = function() {
-                uploadProgress.textContent = `خطا در ارسال: خطای شبکه`;
-                setTimeout(() => {
-                  uploadProgress.classList.add('hidden');
-                  uploadProgress.textContent = '';
-                }, 5000);
-            };
-
-            xhr.open('POST', '/upload');
-            xhr.send(formData);
-            toggleSendButton();
           }
         });
 
-        socket.on('fileUpload', function(data) { // Changed event name
+        socket.on('chat message', function(data) {
+          const item = document.createElement('li');
+          item.classList.add('mb-2', 'chat-message');
+          item.classList.add(data.nickname === socket.nickname ? 'sent' : 'received');
+          item.innerHTML = `<strong>${data.nickname}:</strong> ${data.message}`;
+          messages.appendChild(item);
+          scrollToBottom();
+        });
+
+        socket.on('file upload', function(data) {
           const item = document.createElement('li');
           item.classList.add('mb-2', 'chat-message');
           item.classList.add(data.nickname === socket.nickname ? 'sent' : 'received');
           if (data.fileType.startsWith('image/')) {
-            item.innerHTML = `<strong>${data.nickname}:</strong> <img src="/uploads/${data.fileName}" alt="${data.fileName}" style="max-width: 200px;" onclick="openPopup('<img src=\\'/uploads/${data.fileName}\\' alt=\\'${data.fileName}\\' style=\\'max-width: 100%;\\'><br><a href=\\'/uploads/${data.fileName}\\' download=\\'${data.fileName}\\'>دانلود</a>')">`;
+            item.innerHTML = `<strong>${data.nickname}:</strong> <img src="${data.file}" alt="${data.fileName}" style="max-width: 200px;" onclick="openPopup('<img src=\\'${data.file}\\' alt=\\'${data.fileName}\\' style=\\'max-width: 100%;\\'><br><a href=\\'${data.file}\\' download=\\'${data.fileName}\\'>دانلود</a>')">`;
           } else if (data.fileType.startsWith('video/')) {
-            item.innerHTML = `<strong>${data.nickname}:</strong> <video controls style="max-width: 200px;"><source src="/uploads/${data.fileName}" type="${data.fileType}">${data.fileName}</video><br><a href="/uploads/${data.fileName}" download="${data.fileName}">دانلود</a>`;
+            item.innerHTML = `<strong>${data.nickname}:</strong> <video controls style="max-width: 200px;"><source src="${data.file}" type="${data.fileType}">${data.fileName}</video><br><a href="${data.file}" download="${data.fileName}">دانلود</a>`;
           } else if (data.fileType.startsWith('audio/')) {
-            item.innerHTML = `<strong>${data.nickname}:</strong> <audio controls style="max-width: 200px;"><source src="/uploads/${data.fileName}" type="${data.fileType}">${data.fileName}</audio><br><a href="/uploads/${data.fileName}" download="${data.fileName}">دانلود</a>`;
+            item.innerHTML = `<strong>${data.nickname}:</strong> <audio controls style="max-width: 200px;"><source src="${data.file}" type="${data.fileType}">${data.fileName}</audio><br><a href="${data.file}" download="${data.fileName}">دانلود</a>`;
           } else if (data.fileType === 'application/pdf') {
-            item.innerHTML = `<strong>${data.nickname}:</strong> <a href="/uploads/${data.fileName}" target="_blank">${data.fileName}</a>`;
+            item.innerHTML = `<strong>${data.nickname}:</strong> <a href="${data.file}" target="_blank">${data.fileName}</a>`;
           }
           messages.appendChild(item);
           scrollToBottom();
+        });
+
+        socket.on('file upload progress', function(data) {
+          uploadProgress.classList.remove('hidden');
+          uploadProgress.textContent = `در حال ارسال: ${data.progress}%`;
+          if (data.progress >= 100) {
+            setTimeout(() => {
+              uploadProgress.classList.add('hidden');
+              uploadProgress.textContent = '';
+            }, 2000);
+          }
+        });
+
+        socket.on('file upload error', function(data) {
+          alert(data.message);
         });
 
         socket.on('typing', function(data) {
@@ -255,6 +235,19 @@
         socket.on('clear messages', function() {
           messages.innerHTML = '';
         });
+
+        window.uploadFile = function(event) {
+          const file = event.target.files[0];
+          const reader = new FileReader();
+          reader.onload = function() {
+            socket.emit('file upload', {
+              nickname: socket.nickname,
+              fileName: file.name,
+              file: reader.result
+            });
+          };
+          reader.readAsDataURL(file);
+        };
 
         window.openPopup = function(content) {
           popupContent.innerHTML = content;
