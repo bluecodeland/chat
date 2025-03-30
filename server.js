@@ -185,11 +185,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('file upload', (data) => {
-        // const fileType = mime.lookup(data.fileName);
-        // if (!allowedFileTypes.includes(fileType)) {
-        //     socket.emit('file upload error', { message: 'File type not allowed' });
-        //     return;
-        // }
+        const fileType = mime.lookup(data.fileName);
+        if (!allowedFileTypes.includes(fileType)) {
+            socket.emit('file upload error', { message: 'File type not allowed' });
+            return;
+        }
 
         saveFile(data.nickname, data.fileName, data.file, fileType);
         let progress = 0;
