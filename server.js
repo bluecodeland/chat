@@ -1,13 +1,14 @@
 const express = require('express');
 const https = require('https');
 const fs = require('fs');
-const path = require('path');
 const socketIo = require('socket.io');
 const dotenv = require('dotenv');
+const path = require('path');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const sharedSession = require('express-socket.io-session');
 const sqlite3 = require('sqlite3').verbose();
+const mime = require('mime-types'); // Use mime-types library for file type validation
 const fileUpload = require('express-fileupload'); // اضافه کردن میان‌افزار express-fileupload
 
 // Load environment variables
@@ -84,10 +85,25 @@ db.serialize(() => {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nickname TEXT,
     fileName TEXT,
-    filePath TEXT,
+    fileData TEXT,
     fileType TEXT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+});
+
+// اجرای مهاجرت برای اضافه کردن ستون fileType در صورت نیاز
+db.serialize(() => {
+  db.run(`ALTER TABLE files ADD COLUMN fileType TEXT`, (err) => {
+    if (err) {
+      if (err.message.includes("duplicate column name")) {
+        console.log("Column 'fileType' already exists.");
+      } else {
+        console.error('Failed to add column fileType to files table', err);
+      }
+    } else {
+      console.log("Column 'fileType' added to files table.");
+    }
+  });
 });
 
 // ذخیره پیام‌ها در دیتابیس
@@ -99,9 +115,9 @@ function saveMessage(nickname, message) {
   });
 }
 
-// ذخیره مسیر فایل‌ها در دیتابیس
-function saveFile(nickname, fileName, filePath, fileType) {
-  db.run(`INSERT INTO files (nickname, fileName, filePath, fileType) VALUES (?, ?, ?, ?)`, [nickname, fileName, filePath, fileType], (err) => {
+// ذخیره فایل‌ها در دیتابیس
+function saveFile(nickname, fileName, fileData, fileType) {
+  db.run(`INSERT INTO files (nickname, fileName, fileData, fileType) VALUES (?, ?, ?, ?)`, [nickname, fileName, fileData, fileType], (err) => {
     if (err) {
       console.error('Failed to save file', err);
     }
@@ -149,7 +165,7 @@ app.get('/get-socket-server-url', (req, res) => {
 
 // Endpoint برای دریافت فایل‌ها
 app.get('/get-files', (req, res) => {
-  db.all(`SELECT nickname, fileName, filePath, fileType, timestamp FROM files ORDER BY timestamp ASC`, [], (err, rows) => {
+  db.all(`SELECT nickname, fileName, fileData, fileType, timestamp FROM files ORDER BY timestamp ASC`, [], (err, rows) => {
     if (err) {
       res.status(500).send({ success: false, error: 'Failed to retrieve files' });
     } else {
@@ -195,15 +211,17 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const filePath = path.join(__dirname, 'uploads', data.fileName);
-    fs.writeFile(filePath, data.file, 'base64', (err) => {
-      if (err) {
-        socket.emit('file upload error', { message: 'Failed to save file' });
-        return;
+    // Save the file and emit the progress
+    saveFile(data.nickname, data.fileName, data.file, fileType);
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 10;
+      socket.emit('file upload progress', { progress });
+      if (progress >= 100) {
+        clearInterval(interval);
+        io.emit('file upload', { nickname: data.nickname, fileName: data.fileName, file: data.file, fileType: fileType });
       }
-      saveFile(data.nickname, data.fileName, filePath, fileType);
-      io.emit('file upload', { nickname: data.nickname, fileName: data.fileName, filePath, fileType });
-    });
+    }, 100);
   });
 
   socket.on('clear messages', () => {
