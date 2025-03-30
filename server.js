@@ -8,261 +8,258 @@ const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const sharedSession = require('express-socket.io-session');
 const sqlite3 = require('sqlite3').verbose();
-const mime = require('mime-types'); // Use mime-types library for file type validation
-const fileUpload = require('express-fileupload'); // اضافه کردن میان‌افزار express-fileupload
+const mime = require('mime-types');
+const fileUpload = require('express-fileupload');
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
 
 // SSL certificate paths
 const sslOptions = {
-  key: fs.readFileSync('/etc/letsencrypt/live/chat.id1.ir/privkey.pem', 'utf8'),
-  cert: fs.readFileSync('/etc/letsencrypt/live/chat.id1.ir/fullchain.pem', 'utf8')
+    key: fs.readFileSync('/etc/letsencrypt/live/chat.id1.ir/privkey.pem', 'utf8'),
+    cert: fs.readFileSync('/etc/letsencrypt/live/chat.id1.ir/fullchain.pem', 'utf8')
 };
 
 const server = https.createServer(sslOptions, app);
 const io = socketIo(server, {
-  maxHttpBufferSize: 1e8, // 100 MB
-  pingTimeout: 60000,
-  pingInterval: 25000,
-  transports: ['websocket', 'polling'] // Ensure WebSocket and polling are both enabled
+    maxHttpBufferSize: 1e8,
+    pingTimeout: 60000,
+    pingInterval: 25000,
+    transports: ['websocket', 'polling']
 });
 
 const sessionMiddleware = session({
-  store: new SQLiteStore(),
-  secret: 'your-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 } // 1 day
+    store: new SQLiteStore(),
+    secret: 'your-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 24 * 60 * 60 * 1000 }
 });
 
-// Use session middleware
 app.use(sessionMiddleware);
-
-// اضافه کردن میان‌افزار fileUpload با محدودیت حجمی 10 مگابایت
 app.use(fileUpload({
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 مگابایت
+    limits: { fileSize: 20 * 1024 * 1024 }, // Increase limit to 20MB or adjust as needed
 }));
-
-// Serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Allowed file types
 const allowedFileTypes = [
-  'image/jpeg', 
-  'image/png', 
-  'image/gif', 
-  'video/mp4', 
-  'video/webm', 
-  'video/quicktime', // اضافه کردن فرمت mov
-  'audio/mpeg', 
-  'audio/mp3', // اضافه کردن فرمت mp3
-  'audio/ogg', 
-  'application/pdf'
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'video/mp4',
+    'video/webm',
+    'video/quicktime',
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/ogg',
+    'application/pdf'
 ];
 
-// ایجاد دیتابیس SQLite
 const db = new sqlite3.Database('./chat.db', (err) => {
-  if (err) {
-    console.error('Failed to connect to SQLite database', err);
-  } else {
-    console.log('Connected to SQLite database');
-  }
-});
-
-// ایجاد جداول
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nickname TEXT,
-    message TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-
-  db.run(`CREATE TABLE IF NOT EXISTS files (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nickname TEXT,
-    fileName TEXT,
-    fileData TEXT,
-    fileType TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-});
-
-// اجرای مهاجرت برای اضافه کردن ستون fileType در صورت نیاز
-db.serialize(() => {
-  db.run(`ALTER TABLE files ADD COLUMN fileType TEXT`, (err) => {
     if (err) {
-      if (err.message.includes("duplicate column name")) {
-        console.log("Column 'fileType' already exists.");
-      } else {
-        console.error('Failed to add column fileType to files table', err);
-      }
+        console.error('Failed to connect to SQLite database', err);
     } else {
-      console.log("Column 'fileType' added to files table.");
+        console.log('Connected to SQLite database');
     }
-  });
 });
 
-// ذخیره پیام‌ها در دیتابیس
+db.serialize(() => {
+    db.run(`CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nickname TEXT,
+        message TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS files (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nickname TEXT,
+        fileName TEXT,
+        filePath TEXT, // Store file path instead of data
+        fileType TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+});
+
+db.serialize(() => {
+    db.run(`ALTER TABLE files ADD COLUMN fileType TEXT`, (err) => {
+        if (err) {
+            if (err.message.includes("duplicate column name")) {
+                console.log("Column 'fileType' already exists.");
+            } else {
+                console.error('Failed to add column fileType to files table', err);
+            }
+        } else {
+            console.log("Column 'fileType' added to files table.");
+        }
+    });
+});
+
 function saveMessage(nickname, message) {
-  db.run(`INSERT INTO messages (nickname, message) VALUES (?, ?)`, [nickname, message], (err) => {
-    if (err) {
-      console.error('Failed to save message', err);
-    }
-  });
+    db.run(`INSERT INTO messages (nickname, message) VALUES (?, ?)`, [nickname, message], (err) => {
+        if (err) {
+            console.error('Failed to save message', err);
+        }
+    });
 }
 
-// ذخیره فایل‌ها در دیتابیس
-function saveFile(nickname, fileName, fileData, fileType) {
-  db.run(`INSERT INTO files (nickname, fileName, fileData, fileType) VALUES (?, ?, ?, ?)`, [nickname, fileName, fileData, fileType], (err) => {
-    if (err) {
-      console.error('Failed to save file', err);
-    }
-  });
+// Modified saveFile function to store file path
+function saveFile(nickname, fileName, filePath, fileType) {
+    db.run(`INSERT INTO files (nickname, fileName, filePath, fileType) VALUES (?, ?, ?, ?)`, [nickname, fileName, filePath, fileType], (err) => {
+        if (err) {
+            console.error('Failed to save file path', err);
+        }
+    });
 }
 
-// Function to check if the provided username and password are valid
 function isValidUser(username, password) {
-  for (let i = 1; process.env[`USER_${i}`]; i++) {
-    if (process.env[`USER_${i}`] === username && process.env[`PASSWORD_${i}`] === password) {
-      return process.env[`NICKNAME_${i}`];
+    for (let i = 1; process.env[`USER_${i}`]; i++) {
+        if (process.env[`USER_${i}`] === username && process.env[`PASSWORD_${i}`] === password) {
+            return process.env[`NICKNAME_${i}`];
+        }
     }
-  }
-  return null;
+    return null;
 }
 
-// Basic authentication middleware
 app.post('/login', (req, res) => {
-  const { username, password } = req.body;
-  const nickname = isValidUser(username, password);
-  if (nickname) {
-    req.session.loggedIn = true;
-    req.session.username = username;
-    req.session.nickname = nickname;
-    res.send({ success: true, nickname });
-  } else {
-    res.send({ success: false });
-  }
+    const { username, password } = req.body;
+    const nickname = isValidUser(username, password);
+    if (nickname) {
+        req.session.loggedIn = true;
+        req.session.username = username;
+        req.session.nickname = nickname;
+        res.send({ success: true, nickname });
+    } else {
+        res.send({ success: false });
+    }
 });
 
-// Serve the main page
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Serve favicon.ico
 app.get('/favicon.ico', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
+    res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
 });
 
-// Endpoint to get the socket server URL from environment variables
 app.get('/get-socket-server-url', (req, res) => {
-  res.json({ url: process.env.SOCKET_SERVER_URL });
+    res.json({ url: process.env.SOCKET_SERVER_URL });
 });
 
-// Endpoint برای دریافت فایل‌ها
 app.get('/get-files', (req, res) => {
-  db.all(`SELECT nickname, fileName, fileData, fileType, timestamp FROM files ORDER BY timestamp ASC`, [], (err, rows) => {
-    if (err) {
-      res.status(500).send({ success: false, error: 'Failed to retrieve files' });
-    } else {
-      res.send({ success: true, files: rows });
-    }
-  });
+    db.all(`SELECT nickname, fileName, filePath, fileType, timestamp FROM files ORDER BY timestamp ASC`, [], (err, rows) => { //changed fileData to filePath
+        if (err) {
+            res.status(500).send({ success: false, error: 'Failed to retrieve files' });
+        } else {
+            res.send({ success: true, files: rows });
+        }
+    });
 });
 
-// Endpoint برای دریافت پیام‌ها
 app.get('/get-messages', (req, res) => {
-  db.all(`SELECT nickname, message, timestamp FROM messages ORDER BY timestamp ASC`, [], (err, rows) => {
-    if (err) {
-      res.status(500).send({ success: false, error: 'Failed to retrieve messages' });
-    } else {
-      res.send({ success: true, messages: rows });
-    }
-  });
+    db.all(`SELECT nickname, message, timestamp FROM messages ORDER BY timestamp ASC`, [], (err, rows) => {
+        if (err) {
+            res.status(500).send({ success: false, error: 'Failed to retrieve messages' });
+        } else {
+            res.send({ success: true, messages: rows });
+        }
+    });
 });
 
-// Share session with Socket.io
 io.use(sharedSession(sessionMiddleware, {
-  autoSave: true
+    autoSave: true
 }));
 
-// Socket.io connection
 io.on('connection', (socket) => {
-  if (!socket.handshake.session.loggedIn) {
-    socket.disconnect();
-    return;
-  }
-
-  console.log('User connected');
-
-  socket.on('chat message', (data) => {
-    saveMessage(data.nickname, data.message);
-    io.emit('chat message', { nickname: data.nickname, message: data.message });
-  });
-
-  socket.on('file upload', (data) => {
-    const fileType = mime.lookup(data.fileName);
-    if (!allowedFileTypes.includes(fileType)) {
-      socket.emit('file upload error', { message: 'File type not allowed' });
-      return;
+    if (!socket.handshake.session.loggedIn) {
+        socket.disconnect();
+        return;
     }
 
-    // Save the file and emit the progress
-    saveFile(data.nickname, data.fileName, data.file, fileType);
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 10;
-      socket.emit('file upload progress', { progress });
-      if (progress >= 100) {
-        clearInterval(interval);
-        io.emit('file upload', { nickname: data.nickname, fileName: data.fileName, file: data.file, fileType: fileType });
-      }
-    }, 100);
-  });
+    console.log('User connected');
 
-  socket.on('clear messages', () => {
-    db.run(`DELETE FROM messages`, (err) => {
-      if (err) {
-        console.error('Failed to clear messages', err);
-      }
-      db.run(`DELETE FROM files`, (err) => {
-        if (err) {
-          console.error('Failed to clear files', err);
-        }
-        io.emit('clear messages');
-      });
+    socket.on('chat message', (data) => {
+        saveMessage(data.nickname, data.message);
+        io.emit('chat message', { nickname: data.nickname, message: data.message });
     });
-  });
 
-  socket.on('typing', (data) => {
-    socket.broadcast.emit('typing', data);
-  });
+    // Handle file upload using express-fileupload
+    app.post('/upload', (req, res) => {
+        if (!req.files || !req.files.file) {
+            return res.status(400).send('No files were uploaded.');
+        }
 
-  socket.on('stop typing', (data) => {
-    socket.broadcast.emit('stop typing', data);
-  });
+        const file = req.files.file;
+        const nickname = socket.handshake.session.nickname; // Get nickname from session
+        const fileType = mime.lookup(file.name);
 
-  socket.on('file sending', (data) => {
-    socket.broadcast.emit('file sending', data);
-  });
+        if (!allowedFileTypes.includes(fileType)) {
+            return res.status(400).send('File type not allowed.');
+        }
 
-  socket.on('stop file sending', (data) => {
-    socket.broadcast.emit('stop file sending', data);
-  });
+        const fileName = file.name;
+        const filePath = path.join(__dirname, 'uploads', fileName); // Store in 'uploads' directory
 
-  socket.on('disconnect', () => {
-    console.log('User disconnected');
-  });
+        // Use mv() to place the file somewhere on your server
+        file.mv(filePath, (err) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).send(err);
+            }
+
+            // Save file path to database
+            saveFile(nickname, fileName, filePath, fileType);
+
+            // Emit file upload success to the specific socket that uploaded the file
+            socket.emit('file upload success', {
+                nickname: nickname,
+                fileName: fileName,
+                filePath: filePath, // Send the file path
+                fileType: fileType
+            });
+
+            // Emit the file upload to all connected sockets (including the sender)
+            io.emit('file uploaded', {  // Changed event name to 'file uploaded'
+                nickname: nickname,
+                fileName: fileName,
+                filePath: filePath,  // Send the file path
+                fileType: fileType
+            });
+            res.send('File uploaded successfully'); //send response to client
+        });
+    });
+
+    socket.on('clear messages', () => {
+        db.run(`DELETE FROM messages`, (err) => {
+            if (err) {
+                console.error('Failed to clear messages', err);
+            }
+            db.run(`DELETE FROM files`, (err) => {
+                if (err) {
+                    console.error('Failed to clear files', err);
+                }
+                io.emit('clear messages');
+            });
+        });
+    });
+
+    socket.on('typing', (data) => {
+        socket.broadcast.emit('typing', data);
+    });
+
+    socket.on('stop typing', (data) => {
+        socket.broadcast.emit('stop typing', data);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected');
+    });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
