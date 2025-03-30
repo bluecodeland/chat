@@ -187,15 +187,15 @@
           const item = document.createElement('li');
           item.classList.add('mb-2', 'chat-message');
           item.classList.add(data.nickname === socket.nickname ? 'sent' : 'received');
-          if (data.fileType.startsWith('image/')) {
-            item.innerHTML = `<strong>${data.nickname}:</strong> <img src="${data.filePath}" alt="${data.fileName}" style="max-width: 200px;" onclick="openPopup('<img src=\\'${data.filePath}\\' alt=\\'${data.fileName}\\' style=\\'max-width: 400px;\\'>')">`;
-          } else if (data.fileType.startsWith('video/')) {
-            item.innerHTML = `<strong>${data.nickname}:</strong> <video controls style="max-width: 200px;"><source src="${data.filePath}" type="${data.fileType}">${data.fileName}</video><br><a href="${data.filePath}" target="_blank">${data.fileName}</a>`;
-          } else if (data.fileType.startsWith('audio/')) {
-            item.innerHTML = `<strong>${data.nickname}:</strong> <audio controls style="max-width: 200px;"><source src="${data.filePath}" type="${data.fileType}">${data.fileName}</audio><br><a href="${data.filePath}" target="_blank">${data.fileName}</a>`;
-          } else if (data.fileType === 'application/pdf') {
-            item.innerHTML = `<strong>${data.nickname}:</strong> <a href="${data.filePath}" target="_blank">${data.fileName}</a>`;
-          }
+          if (file.fileType.startsWith('image/')) {
+                    item.innerHTML = `<strong><span class="math-inline">\{file\.nickname\}\:</strong\> <img src\="</span>{file.fileData}" alt="<span class="math-inline">\{file\.fileName\}" style\="max\-width\: 200px;" onclick\="openPopup\('<img src\=\\'</span>{file.fileData}\\' alt=\\'<span class="math-inline">\{file\.fileName\}\\' style\=\\'max\-width\: 100%;\\'\><br\><a href\=\\'</span>{file.fileData}\\' download=\\'${file.fileName}\\'>دانلود</a>')">`;
+                  } else if (file.fileType.startsWith('video/')) {
+                    item.innerHTML = `<strong><span class="math-inline">\{file\.nickname\}\:</strong\> <video controls style\="max\-width\: 200px;"\><source src\="\\$\{file\.fileData\}\\" type\="\\$\{file\.fileType\}\\"\></span>{file.fileName}</video><br><a href="\\<span class="math-inline">\{file\.fileData\}\\" download\="\\</span>{file.fileName}\\">دانلود</a>`;
+                  } else if (file.fileType.startsWith('audio/')) {
+                    item.innerHTML = `<strong><span class="math-inline">\{file\.nickname\}\:</strong\> <audio controls style\="max\-width\: 200px;"\><source src\="\\$\{file\.fileData\}\\" type\="\\$\{file\.fileType\}\\"\></span>{file.fileName}</audio><br><a href="\\<span class="math-inline">\{file\.fileData\}\\" download\="</span>{file.fileName}">دانلود</a>`;
+                  } else if (file.fileType === 'application/pdf') {
+                    item.innerHTML = `<strong><span class="math-inline">\{file\.nickname\}\:</strong\> <a href\="</span>{file.fileData}" target="_blank">${file.fileName}</a>`;
+                  }
           messages.appendChild(item);
           scrollToBottom();
         });
