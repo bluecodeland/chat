@@ -22,9 +22,9 @@ const sslOptions = {
 
 const server = https.createServer(sslOptions, app);
 const io = socketIo(server, {
-    maxHttpBufferSize: 1e8,
-    pingTimeout: 60000,
-    pingInterval: 25000,
+    // maxHttpBufferSize: 1e8,
+    // pingTimeout: 60000,
+    // pingInterval: 25000,
     transports: ['websocket', 'polling']
 });
 
