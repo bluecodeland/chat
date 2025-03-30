@@ -24,6 +24,9 @@ const sslOptions = {
 
 const server = https.createServer(sslOptions, app);
 const io = socketIo(server, {
+  maxHttpBufferSize: 1e8, // 100 MB
+  pingTimeout: 60000,
+  pingInterval: 25000,
   transports: ['websocket', 'polling'] // Ensure WebSocket and polling are both enabled
 });
 
