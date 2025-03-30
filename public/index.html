@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>برنامه چت</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" integrity="sha384-SZXxX4whJ79/gErwcOYf+zWLeJdY/qpuqC4cAa9rOGUstPomtqpuNWT9wdPEn2fk" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" integrity="sha384-SZXxX4whJ79/gErwcOYf+zWLeJdY/qC4cAa9rOGUstPomtqpuqC4cAa9rOGUstPomtqpuNWT9wdPEn2fk" crossorigin="anonymous">
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
   <link rel="stylesheet" href="styles.css">
@@ -147,13 +147,13 @@
                   item.classList.add('mb-2', 'chat-message');
                   item.classList.add(file.nickname === socket.nickname ? 'sent' : 'received');
                   if (file.fileType.startsWith('image/')) {
-                    item.innerHTML = `<strong>${file.nickname}:</strong> <img src="${file.fileData}" alt="${file.fileName}" style="max-width: 200px;" onclick="openPopup('<img src=\\'${file.fileData}\\' alt=\\'${file.fileName}\\' style=\\'max-width: 400px;\\'>')">`;
+                    item.innerHTML = `<strong>${file.nickname}:</strong> <img src="${file.filePath}" alt="${file.fileName}" style="max-width: 200px;" onclick="openPopup('<img src=\\'${file.filePath}\\' alt=\\'${file.fileName}\\' style=\\'max-width: 400px;\\'>')">`;
                   } else if (file.fileType.startsWith('video/')) {
-                    item.innerHTML = `<strong>${file.nickname}:</strong> <video controls style="max-width: 200px;"><source src="${file.fileData}" type="${file.fileType}">${file.fileName}</video><br><a href="${file.fileData}" target="_blank">${file.fileName}</a>`;
+                    item.innerHTML = `<strong>${file.nickname}:</strong> <video controls style="max-width: 200px;"><source src="${file.filePath}" type="${file.fileType}">${file.fileName}</video><br><a href="${file.filePath}" target="_blank">${file.fileName}</a>`;
                   } else if (file.fileType.startsWith('audio/')) {
-                    item.innerHTML = `<strong>${file.nickname}:</strong> <audio controls style="max-width: 200px;"><source src="${file.fileData}" type="${file.fileType}">${file.fileName}</audio><br><a href="${file.fileData}" target="_blank">${file.fileName}</a>`;
+                    item.innerHTML = `<strong>${file.nickname}:</strong> <audio controls style="max-width: 200px;"><source src="${file.filePath}" type="${file.fileType}">${file.fileName}</audio><br><a href="${file.filePath}" target="_blank">${file.fileName}</a>`;
                   } else if (file.fileType === 'application/pdf') {
-                    item.innerHTML = `<strong>${file.nickname}:</strong> <a href="${file.fileData}" target="_blank">${file.fileName}</a>`;
+                    item.innerHTML = `<strong>${file.nickname}:</strong> <a href="${file.filePath}" target="_blank">${file.fileName}</a>`;
                   }
                   messages.appendChild(item);
                 });
@@ -188,13 +188,13 @@
           item.classList.add('mb-2', 'chat-message');
           item.classList.add(data.nickname === socket.nickname ? 'sent' : 'received');
           if (data.fileType.startsWith('image/')) {
-            item.innerHTML = `<strong>${data.nickname}:</strong> <img src="${data.file}" alt="${data.fileName}" style="max-width: 200px;" onclick="openPopup('<img src=\\'${data.file}\\' alt=\\'${data.fileName}\\' style=\\'max-width: 400px;\\'>')">`;
+            item.innerHTML = `<strong>${data.nickname}:</strong> <img src="${data.filePath}" alt="${data.fileName}" style="max-width: 200px;" onclick="openPopup('<img src=\\'${data.filePath}\\' alt=\\'${data.fileName}\\' style=\\'max-width: 400px;\\'>')">`;
           } else if (data.fileType.startsWith('video/')) {
-            item.innerHTML = `<strong>${data.nickname}:</strong> <video controls style="max-width: 200px;"><source src="${data.file}" type="${data.fileType}">${data.fileName}</video><br><a href="${data.file}" target="_blank">${data.fileName}</a>`;
+            item.innerHTML = `<strong>${data.nickname}:</strong> <video controls style="max-width: 200px;"><source src="${data.filePath}" type="${data.fileType}">${data.fileName}</video><br><a href="${data.filePath}" target="_blank">${data.fileName}</a>`;
           } else if (data.fileType.startsWith('audio/')) {
-            item.innerHTML = `<strong>${data.nickname}:</strong> <audio controls style="max-width: 200px;"><source src="${data.file}" type="${data.fileType}">${data.fileName}</audio><br><a href="${data.file}" target="_blank">${data.fileName}</a>`;
+            item.innerHTML = `<strong>${data.nickname}:</strong> <audio controls style="max-width: 200px;"><source src="${data.filePath}" type="${data.fileType}">${data.fileName}</audio><br><a href="${data.filePath}" target="_blank">${data.fileName}</a>`;
           } else if (data.fileType === 'application/pdf') {
-            item.innerHTML = `<strong>${data.nickname}:</strong> <a href="${data.file}" target="_blank">${data.fileName}</a>`;
+            item.innerHTML = `<strong>${data.nickname}:</strong> <a href="${data.filePath}" target="_blank">${data.fileName}</a>`;
           }
           messages.appendChild(item);
           scrollToBottom();
@@ -243,7 +243,7 @@
             socket.emit('file upload', {
               nickname: socket.nickname,
               fileName: file.name,
-              file: reader.result,
+              file: reader.result.split(',')[1], // ارسال فقط محتوای Base64
               fileType: file.type
             });
           };
