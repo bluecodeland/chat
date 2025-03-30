@@ -194,8 +194,17 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Save the file and emit the progress
     saveFile(data.nickname, data.fileName, data.file, fileType);
-    io.emit('file upload', { nickname: data.nickname, fileName: data.fileName, file: data.file, fileType: fileType });
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 10;
+      socket.emit('file upload progress', { progress });
+      if (progress >= 100) {
+        clearInterval(interval);
+        io.emit('file upload', { nickname: data.nickname, fileName: data.fileName, file: data.file, fileType: fileType });
+      }
+    }, 100);
   });
 
   socket.on('clear messages', () => {
