@@ -9,6 +9,7 @@ const SQLiteStore = require('connect-sqlite3')(session);
 const sharedSession = require('express-socket.io-session');
 const sqlite3 = require('sqlite3').verbose();
 const mime = require('mime-types'); // Use mime-types library for file type validation
+const fileUpload = require('express-fileupload'); // اضافه کردن میان‌افزار express-fileupload
 
 // Load environment variables
 dotenv.config();
@@ -37,6 +38,11 @@ const sessionMiddleware = session({
 // Use session middleware
 app.use(sessionMiddleware);
 
+// اضافه کردن میان‌افزار fileUpload با محدودیت حجمی 10 مگابایت
+app.use(fileUpload({
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 مگابایت
+}));
+
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -44,7 +50,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Allowed file types
-const allowedFileTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/ogg', 'application/pdf'];
+const allowedFileTypes = [
+  'image/jpeg', 
+  'image/png', 
+  'image/gif', 
+  'video/mp4', 
+  'video/webm', 
+  'video/quicktime', // اضافه کردن فرمت mov
+  'audio/mpeg', 
+  'audio/mp3', // اضافه کردن فرمت mp3
+  'audio/ogg', 
+  'application/pdf'
+];
 
 // ایجاد دیتابیس SQLite
 const db = new sqlite3.Database('./chat.db', (err) => {
