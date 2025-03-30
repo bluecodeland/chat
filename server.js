@@ -44,7 +44,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Allowed file types
-const allowedFileTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/ogg', 'audio/mp3', 'application/pdf'];
+const allowedFileTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/ogg', 'audio/mp3', 'audio/wav', 'application/pdf'];
 
 // ایجاد دیتابیس SQLite
 const db = new sqlite3.Database('./chat.db', (err) => {
