@@ -10,6 +10,7 @@ const sharedSession = require('express-socket.io-session');
 const sqlite3 = require('sqlite3').verbose();
 const mime = require('mime-types');
 const fileUpload = require('express-fileupload');
+const crypto = require('crypto'); // For generating random file names
 
 dotenv.config();
 
@@ -189,77 +190,8 @@ io.on('connection', (socket) => {
     // Handle file upload using express-fileupload
     app.post('/upload', (req, res) => {
         if (!req.files || !req.files.file) {
-            return res.status(400).send('No files were uploaded.');
+            return res.status(400).send({ error: 'No files were uploaded.' });
         }
 
         const file = req.files.file;
-        const nickname = socket.handshake.session.nickname; // Get nickname from session
-        const fileType = mime.lookup(file.name);
-
-        if (!allowedFileTypes.includes(fileType)) {
-            return res.status(400).send('File type not allowed.');
-        }
-
-        const fileName = file.name;
-        const filePath = path.join(__dirname, 'uploads', fileName); // Store in 'uploads' directory
-
-        // Use mv() to place the file somewhere on your server
-        file.mv(filePath, (err) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).send(err);
-            }
-
-            // Save file path to database
-            saveFile(nickname, fileName, filePath, fileType);
-
-            // Emit file upload success to the specific socket that uploaded the file
-            socket.emit('file upload success', {
-                nickname: nickname,
-                fileName: fileName,
-                filePath: filePath, // Send the file path
-                fileType: fileType
-            });
-
-            // Emit the file upload to all connected sockets (including the sender)
-            io.emit('file uploaded', {  // Changed event name to 'file uploaded'
-                nickname: nickname,
-                fileName: fileName,
-                filePath: filePath,  // Send the file path
-                fileType: fileType
-            });
-            res.send('File uploaded successfully'); //send response to client
-        });
-    });
-
-    socket.on('clear messages', () => {
-        db.run(`DELETE FROM messages`, (err) => {
-            if (err) {
-                console.error('Failed to clear messages', err);
-            }
-            db.run(`DELETE FROM files`, (err) => {
-                if (err) {
-                    console.error('Failed to clear files', err);
-                }
-                io.emit('clear messages');
-            });
-        });
-    });
-
-    socket.on('typing', (data) => {
-        socket.broadcast.emit('typing', data);
-    });
-
-    socket.on('stop typing', (data) => {
-        socket.broadcast.emit('stop typing', data);
-    });
-
-    socket.on('disconnect', () => {
-        console.log('User disconnected');
-    });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+        const nickname = socket.handshake
