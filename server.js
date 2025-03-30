@@ -44,18 +44,18 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const allowedFileTypes = [
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'video/mp4',
-    'video/webm',
-    'video/quicktime',
-    'audio/mpeg',
-    'audio/mp3',
-    'audio/ogg',
-    'application/pdf'
-];
+// const allowedFileTypes = [
+//     'image/jpeg',
+//     'image/png',
+//     'image/gif',
+//     'video/mp4',
+//     'video/webm',
+//     'video/quicktime',
+//     'audio/mpeg',
+//     'audio/mp3',
+//     'audio/ogg',
+//     'application/pdf'
+// ];
 
 const db = new sqlite3.Database('./chat.db', (err) => {
     if (err) {
@@ -185,11 +185,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('file upload', (data) => {
-        const fileType = mime.lookup(data.fileName);
-        if (!allowedFileTypes.includes(fileType)) {
-            socket.emit('file upload error', { message: 'File type not allowed' });
-            return;
-        }
+        // const fileType = mime.lookup(data.fileName);
+        // if (!allowedFileTypes.includes(fileType)) {
+        //     socket.emit('file upload error', { message: 'File type not allowed' });
+        //     return;
+        // }
 
         saveFile(data.nickname, data.fileName, data.file, fileType);
         let progress = 0;
